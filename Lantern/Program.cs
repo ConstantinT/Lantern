@@ -279,6 +279,8 @@ namespace Lantern
 
         static void RunOptions(OptionsMutuallyExclusive opts)
         {
+            Console.WriteLine("Welcome to Lantern.");
+
             if (opts.AskNonce) {
                 Console.WriteLine(getNonce(opts.Proxy));
             }
@@ -291,14 +293,14 @@ namespace Lantern
                 }
                 else
                 {
-                Console.WriteLine(createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy));
+                    Console.WriteLine(createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy));
                 }
 
             }
             else if (opts.AskToken)
             {
                 if (opts.PRT != null & opts.DerivedKey != null & opts.Context != null)
-                {   
+                {
                     string prtCookie = createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
                     string code = getCodeFromPRTCookie(prtCookie, opts.Proxy);
                     string result = authenticateWithCode(code, opts.Proxy);
@@ -310,17 +312,25 @@ namespace Lantern
                     string result = authenticateWithCode(code, opts.Proxy);
                     Console.WriteLine(result);
 
-                } else if(opts.RefreshToken != null)
+                }
+                else if (opts.RefreshToken != null)
                 {
                     string result = authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy);
-                    Console.WriteLine(result);
+                    if (result != null)
+                    {
+                        Console.WriteLine(result);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Something went wrong, ensure that the token is still valid.");
+                    }
                 }
                 else if (opts.UserName != null & opts.Password != null)
                 {
                     string result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy);
                     Console.WriteLine(result);
                 }
-                else 
+                else
                 {
                     Console.WriteLine("Please set the corect arguments.");
                     return;
