@@ -2,6 +2,8 @@
 using JWT;
 using JWT.Algorithms;
 using JWT.Serializers;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -279,7 +281,9 @@ namespace Lantern
 
         static void RunOptions(OptionsMutuallyExclusive opts)
         {
+            Console.WriteLine("");
             Console.WriteLine("Welcome to Lantern.");
+            Console.WriteLine("");
 
             if (opts.AskNonce) {
                 Console.WriteLine(getNonce(opts.Proxy));
@@ -293,52 +297,64 @@ namespace Lantern
                 }
                 else
                 {
+                    Console.WriteLine("Here is your PRT-Cookie:");
+                    Console.WriteLine("");
                     Console.WriteLine(createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy));
+                    Console.WriteLine("");
+                    Console.WriteLine("You can use it with this tool or add it to a browser.");
+                    Console.WriteLine("Set as cookie \"x-ms-RefreshTokenCredential\" with HTTPOnly flag");
                 }
 
             }
             else if (opts.AskToken)
             {
+                string result = null;
                 if (opts.PRT != null & opts.DerivedKey != null & opts.Context != null)
                 {
                     string prtCookie = createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
                     string code = getCodeFromPRTCookie(prtCookie, opts.Proxy);
-                    string result = authenticateWithCode(code, opts.Proxy);
-                    Console.WriteLine(result);
+                    result = authenticateWithCode(code, opts.Proxy);
                 }
                 else if (opts.PrtCookie != null)
                 {
                     string code = getCodeFromPRTCookie(opts.PrtCookie, opts.Proxy);
-                    string result = authenticateWithCode(code, opts.Proxy);
-                    Console.WriteLine(result);
+                    result = authenticateWithCode(code, opts.Proxy);
+                    
 
                 }
                 else if (opts.RefreshToken != null)
                 {
-                    string result = authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy);
-                    if (result != null)
-                    {
-                        Console.WriteLine(result);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Something went wrong, ensure that the token is still valid.");
-                    }
+                    result = authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy);
                 }
                 else if (opts.UserName != null & opts.Password != null)
                 {
-                    string result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy);
-                    Console.WriteLine(result);
+                    result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy);
                 }
                 else
                 {
                     Console.WriteLine("Please set the corect arguments.");
                     return;
                 }
+
+                if(result != null)
+                {
+                    Console.WriteLine("Here is your token:");
+                    Console.WriteLine("");
+
+                    JToken parsedJson = JToken.Parse(result);
+                    var beautified = parsedJson.ToString(Formatting.Indented);
+                    Console.WriteLine(beautified);
+                }
+                else
+                {
+                    Console.WriteLine("Sorry something went wrong...");
+                }
+
+                
             }
             else
             {
-                Console.WriteLine("Somethin went wrong....");
+                Console.WriteLine("Please tell me want you want to have: --asknonce, --askcookie, --asktoken or --help");
 
             }
         }

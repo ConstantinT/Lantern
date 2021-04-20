@@ -9,13 +9,13 @@ How Azure PRT works is mainly described in these two articles:
 
 ## Compiling
 
-The is built with VisualStudio 2019 and .NetCore. Simple open the project and compile it. 
+The is built with VisualStudio 2019 and .NetCore. Simple open the project and compile it. I tested it for Windows and Linux.
 
 ## Usage
 
 ### Nonce
 
-To ask for a Azure nonce you can use the following command: 
+To request a nonce you can use the following command: 
 
 ```PowerShell
 Lantern.exe --asknonce
