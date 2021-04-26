@@ -1,6 +1,7 @@
 ﻿using CommandLine;
 using JWT;
 using JWT.Algorithms;
+using JWT.Builder;
 using JWT.Serializers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -79,7 +80,7 @@ namespace Lantern
 
         }
 
-        static string getCodeFromPRTCookie(string cookie, string proxy = "")
+        static string getCodeFromPRTCookie(string cookie, string proxy)
         {
             String uri = string.Format(@"/Common/oauth2/authorize?resource={0}&client_id={1}&response_type={2}&haschrome={3}&redirect_uri={4}&client-request-id={5}&x-client-SKU={6}&x-client-Ver={7}&x-client-CPU={8}&x-client-OS={9}&site_id={10}&mscrid={11}",
                 "https://graph.windows.net/",
@@ -87,7 +88,8 @@ namespace Lantern
                 "code",
                 "1",
                 "urn:ietf:wg:oauth:2.0:oob",
-                Guid.NewGuid(),
+                //Guid.NewGuid(),
+                "AAAAAAA",
                 "PCL.Desktop",
                 "3.19.7.16602",
                 "x64",
@@ -103,7 +105,7 @@ namespace Lantern
                 var response = client.SendAsync(message).Result;
                 if (response.StatusCode.Equals("200"))
                 {
-                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blcks.");
+                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
                     return null;
                 }
 
@@ -115,14 +117,14 @@ namespace Lantern
                 }
                 else
                 {
-                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blcks.");
+                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
                     return "";
                 }
                 
                 int startOf = location.IndexOf("code=");
                 if (startOf == -1)
                 {
-                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blcks.");
+                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
                     return null;
                 }
                 int endOf = location.IndexOf("&", startOf + 5);
@@ -281,8 +283,15 @@ namespace Lantern
 
         static void RunOptions(OptionsMutuallyExclusive opts)
         {
+            String banner = @"
+.____                   __                       
+|    |   _____    _____/  |_  ___________  ____  
+|    |   \__  \  /    \   __\/ __ \_  __ \/    \ 
+|    |___ / __ \|   |  \  | \  ___/|  | \/   |  \
+|_______ (____  /___|  /__|  \___  >__|  |___|  /
+        \/    \/     \/          \/           \/ ";
             Console.WriteLine("");
-            Console.WriteLine("Welcome to Lantern.");
+            Console.WriteLine(banner);
             Console.WriteLine("");
 
             if (opts.AskNonce) {
@@ -338,10 +347,19 @@ namespace Lantern
 
                 if(result != null)
                 {
-                    Console.WriteLine("Here is your token:");
-                    Console.WriteLine("");
+                   
+
+                    var serializer = new JsonNetSerializer();
+                    var urlEncoder = new JwtBase64UrlEncoder();
+                    var decoder = new JwtDecoder(serializer, urlEncoder);
 
                     JToken parsedJson = JToken.Parse(result);
+                    var id_token = decoder.Decode(parsedJson["id_token"].ToString());
+                    var parsedIDToken = JToken.Parse(id_token)
+                    parsedJson["id_token"] = parsedIDToken;
+
+                    Console.WriteLine("Here is your token:");
+                    Console.WriteLine("");
                     var beautified = parsedJson.ToString(Formatting.Indented);
                     Console.WriteLine(beautified);
                 }
