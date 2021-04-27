@@ -44,6 +44,15 @@ namespace Lantern
         [Option(HelpText = "Set PRTCookie")]
         public string PrtCookie { get; set; }
 
+        [Option(HelpText = "Set ClientID (ApplicationID)")]
+        public string ClientID { get; set; }
+
+        [Option(HelpText = "Set Client Secret")]
+        public string ClientSecret { get; set; }
+
+        [Option(HelpText = "Set Tenant")]
+        public string Tenant { get; set; }
+
         [Option(HelpText = "Set username")]
         public string UserName { get; set; }
 
@@ -136,9 +145,8 @@ namespace Lantern
         }
 
 
-        static string postToTokenEndpoint(FormUrlEncodedContent formContent, string proxy)
+        static string postToTokenEndpoint(FormUrlEncodedContent formContent, string proxy, string uri = "/common/oauth2/token")
         {
-            String uri = "common/oauth2/token";
             using (var message = new HttpRequestMessage(HttpMethod.Post, uri))
             using (var client = getDefaultClient(proxy, false))
             {
@@ -153,6 +161,18 @@ namespace Lantern
                 }
                 return null;
             }
+        }
+
+        static string authenticateWithClientIDandSecret(string clientID, string clientSecret, string tennant, string proxy)
+        {
+            var formContent = new FormUrlEncodedContent(new[]
+                {
+                new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                new KeyValuePair<string, string>("client_id", clientID),
+                new KeyValuePair<string, string>("resource", "https://graph.windows.net"),
+                new KeyValuePair<string, string>("client_secret", clientSecret)
+                });
+            return postToTokenEndpoint(formContent, proxy, "/" + tennant + "/oauth2/token");
         }
 
         static string authenticateWithUserNameAndPassword(string username, string password, string proxy)
@@ -339,6 +359,10 @@ namespace Lantern
                 {
                     result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy);
                 }
+                else if (opts.Tenant != null & opts.ClientID != null & opts.ClientSecret != null)
+                {
+                    result = authenticateWithClientIDandSecret(opts.ClientID, opts.ClientSecret, opts.Tenant, opts.Proxy);
+                }
                 else
                 {
                     Console.WriteLine("Please set the corect arguments.");
@@ -354,9 +378,12 @@ namespace Lantern
                     var decoder = new JwtDecoder(serializer, urlEncoder);
 
                     JToken parsedJson = JToken.Parse(result);
-                    var id_token = decoder.Decode(parsedJson["id_token"].ToString());
-                    var parsedIDToken = JToken.Parse(id_token)
-                    parsedJson["id_token"] = parsedIDToken;
+                    if (parsedJson["id_token"] != null) {
+                        var id_token = decoder.Decode(parsedJson["id_token"].ToString());
+                        var parsedIDToken = JToken.Parse(id_token);
+                        parsedJson["id_token"] = parsedIDToken;
+                    }
+                    
 
                     Console.WriteLine("Here is your token:");
                     Console.WriteLine("");
