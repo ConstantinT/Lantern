@@ -14,18 +14,32 @@ using System.Text;
 
 namespace Lantern
 {
-    public class OptionsMutuallyExclusive
+
+    [Verb("nonce", HelpText = "Request a nonce from Azure.")]
+    class NonceOptions
     {
+        [Option(HelpText = "Set Proxy")]
+        public string Proxy { get; set; }
+    }
+    [Verb("cookie", HelpText = "Request a PRT Cookie from Azure")]
+    class CookieOptions
+    {
+        [Option(HelpText = "Set Proxy")]
+        public string Proxy { get; set; }
+        [Option(HelpText = "Set PRT")]
+        public string PRT { get; set; }
 
-        [Option(SetName = "Nonce", HelpText = "Ask for Nonce")]
-        public bool AskNonce { get; set; }
+        [Option(HelpText = "Set DerivedKey")]
+        public string DerivedKey { get; set; }
 
-        [Option(SetName = "Cookie", HelpText = "Ask for PRT Cookie")]
-        public bool AskCookie { get; set; }
+        [Option(HelpText = "Set Context")]
+        public string Context { get; set; }
 
-        [Option(SetName = "Token", HelpText = "Ask for token")]
-        public bool AskToken { get; set; }
-
+       
+    }
+    [Verb("token", HelpText = "Request an Access Token from Azure")]
+    class TokenOptions
+    {
         [Option(HelpText = "Set Proxy")]
         public string Proxy { get; set; }
 
@@ -59,6 +73,11 @@ namespace Lantern
         [Option(HelpText = "Set password")]
         public string Password { get; set; }
     }
+    [Verb("adddevice", HelpText = "Clone a repository into a new directory.")]
+    class JoinOptions
+    { //normal options here
+    }
+
 
     class Program
     {
@@ -227,18 +246,31 @@ namespace Lantern
             return bytes.ToArray();
         }
 
+        https://stackoverflow.com/questions/1228701/code-for-decoding-encoding-a-modified-base64-url
+        static byte[] Base64Decode(string arg)
+        {
+            string s = arg;
+            s = s.Replace('-', '+'); // 62nd char of encoding
+            s = s.Replace('_', '/'); // 63rd char of encoding
+            switch (s.Length % 4) // Pad with trailing '='s
+            {
+                case 0: break; // No pad chars in this case
+                case 2: s += "=="; break; // Two pad chars
+                case 3: s += "="; break; // One pad char
+                default:
+                    throw new System.Exception(
+             "Illegal base64prt string!");
+            }
+            return Convert.FromBase64String(s); // Standard base64 decoder
+        }
+
         static string createPRTCookie(string prt, string context, string derived_sessionkey, string proxy)
         {
             string secret = derived_sessionkey.Replace(" ", "");
             string nonce = getNonce(proxy);
 
-            var padlen = prt.Length % 4;
-            for (int i = 0; i < padlen; i++)
-            {
-                prt = prt + "=";
-            }
-
-            byte[] data = Convert.FromBase64String(prt);
+            byte[] data = Base64Decode(prt);
+            
             string prtdecoded = Encoding.UTF8.GetString(data);
 
             var payload = new Dictionary<string, object>
@@ -298,10 +330,23 @@ namespace Lantern
 
         static void Main(string[] args)
         {
-            CommandLine.Parser.Default.ParseArguments<OptionsMutuallyExclusive>(args).WithParsed(RunOptions).WithNotParsed(HandleParseError);
+            PrintBanner();
+            //CommandLine.Parser.Default.ParseArguments<OptionsMutuallyExclusive>(args).WithParsed(RunOptions).WithNotParsed(HandleParseError);
+            Parser.Default.ParseArguments<NonceOptions, CookieOptions, TokenOptions>(args)
+            .MapResult(
+                (NonceOptions options) => RunNonce(options),
+                (CookieOptions options) => RunCookie(options),
+                (TokenOptions options) => RunToken(options),
+                errors => Error());
         }
 
-        static void RunOptions(OptionsMutuallyExclusive opts)
+        static int Error() {
+            Console.WriteLine("Please tell me want you want to do...");
+            return 1;
+        
+        }
+
+        static void PrintBanner()
         {
             String banner = @"
 .____                   __                       
@@ -313,99 +358,91 @@ namespace Lantern
             Console.WriteLine("");
             Console.WriteLine(banner);
             Console.WriteLine("");
+        }
 
-            if (opts.AskNonce) {
-                Console.WriteLine(getNonce(opts.Proxy));
-            }
-            else if (opts.AskCookie)
+        static int RunNonce(NonceOptions opts)
+        {
+
+            Console.WriteLine(getNonce(opts.Proxy));
+            return 0;
+        }
+
+        static int RunCookie(CookieOptions opts)
+        {
+            if (opts.PRT == null | opts.DerivedKey == null | opts.Context == null)
             {
-                if (opts.PRT == null | opts.DerivedKey == null | opts.Context == null)
-                {
-                    Console.WriteLine("Please set the corect arguments.");
-                    return;
-                }
-                else
-                {
-                    Console.WriteLine("Here is your PRT-Cookie:");
-                    Console.WriteLine("");
-                    Console.WriteLine(createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy));
-                    Console.WriteLine("");
-                    Console.WriteLine("You can use it with this tool or add it to a browser.");
-                    Console.WriteLine("Set as cookie \"x-ms-RefreshTokenCredential\" with HTTPOnly flag");
-                }
-
-            }
-            else if (opts.AskToken)
-            {
-                string result = null;
-                if (opts.PRT != null & opts.DerivedKey != null & opts.Context != null)
-                {
-                    string prtCookie = createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
-                    string code = getCodeFromPRTCookie(prtCookie, opts.Proxy);
-                    result = authenticateWithCode(code, opts.Proxy);
-                }
-                else if (opts.PrtCookie != null)
-                {
-                    string code = getCodeFromPRTCookie(opts.PrtCookie, opts.Proxy);
-                    result = authenticateWithCode(code, opts.Proxy);
-                    
-
-                }
-                else if (opts.RefreshToken != null)
-                {
-                    result = authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy);
-                }
-                else if (opts.UserName != null & opts.Password != null)
-                {
-                    result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy);
-                }
-                else if (opts.Tenant != null & opts.ClientID != null & opts.ClientSecret != null)
-                {
-                    result = authenticateWithClientIDandSecret(opts.ClientID, opts.ClientSecret, opts.Tenant, opts.Proxy);
-                }
-                else
-                {
-                    Console.WriteLine("Please set the corect arguments.");
-                    return;
-                }
-
-                if(result != null)
-                {
-                   
-
-                    var serializer = new JsonNetSerializer();
-                    var urlEncoder = new JwtBase64UrlEncoder();
-                    var decoder = new JwtDecoder(serializer, urlEncoder);
-
-                    JToken parsedJson = JToken.Parse(result);
-                    if (parsedJson["id_token"] != null) {
-                        var id_token = decoder.Decode(parsedJson["id_token"].ToString());
-                        var parsedIDToken = JToken.Parse(id_token);
-                        parsedJson["id_token"] = parsedIDToken;
-                    }
-                    
-
-                    Console.WriteLine("Here is your token:");
-                    Console.WriteLine("");
-                    var beautified = parsedJson.ToString(Formatting.Indented);
-                    Console.WriteLine(beautified);
-                }
-                else
-                {
-                    Console.WriteLine("Sorry something went wrong...");
-                }
-
-                
+                Console.WriteLine("Please set the corect arguments.");
+                return 1;
             }
             else
             {
-                Console.WriteLine("Please tell me want you want to have: --asknonce, --askcookie, --asktoken or --help");
+                Console.WriteLine("Here is your PRT-Cookie:");
+                Console.WriteLine("");
+                Console.WriteLine(createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy));
+                Console.WriteLine("");
+                Console.WriteLine("You can use it with this tool or add it to a browser.");
+                Console.WriteLine("Set as cookie \"x-ms-RefreshTokenCredential\" with HTTPOnly flag");
+            }
+
+            return 0;
+        }
+
+        static int RunToken(TokenOptions opts)
+        {
+            string result = null;
+            if (opts.PRT != null & opts.DerivedKey != null & opts.Context != null)
+            {
+                string prtCookie = createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
+                string code = getCodeFromPRTCookie(prtCookie, opts.Proxy);
+                result = authenticateWithCode(code, opts.Proxy);
+            }
+            else if (opts.PrtCookie != null)
+            {
+                string code = getCodeFromPRTCookie(opts.PrtCookie, opts.Proxy);
+                result = authenticateWithCode(code, opts.Proxy);
+
 
             }
-        }
-        static void HandleParseError(IEnumerable<Error> errs)
-        {
-            //handle errors
+            else if (opts.RefreshToken != null)
+            {
+                result = authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy);
+            }
+            else if (opts.UserName != null & opts.Password != null)
+            {
+                result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy);
+            }
+            else if (opts.Tenant != null & opts.ClientID != null & opts.ClientSecret != null)
+            {
+                result = authenticateWithClientIDandSecret(opts.ClientID, opts.ClientSecret, opts.Tenant, opts.Proxy);
+            }
+            else
+            {
+                Console.WriteLine("Please set the corect arguments.");
+                return 1;
+            }
+
+            if (result != null)
+            {
+                var serializer = new JsonNetSerializer();
+                var urlEncoder = new JwtBase64UrlEncoder();
+                var decoder = new JwtDecoder(serializer, urlEncoder);
+
+                JToken parsedJson = JToken.Parse(result);
+                if (parsedJson["id_token"] != null)
+                {
+                    var id_token = decoder.Decode(parsedJson["id_token"].ToString());
+                    var parsedIDToken = JToken.Parse(id_token);
+                    parsedJson["id_token"] = parsedIDToken;
+                }
+
+                Console.WriteLine("Here is your token:");
+                Console.WriteLine("");
+                var beautified = parsedJson.ToString(Formatting.Indented);
+                Console.WriteLine(beautified);
+
+                return 0;
+            }
+            return 1;
         }
     }
 }
