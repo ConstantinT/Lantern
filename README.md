@@ -1,6 +1,6 @@
 # Lantern
 
-Lantern is a small tool I created to learn something about Azure authentication, tokens and more. Maybe It helps you to learn too. The code for authentication, is mainly copied from [auth.py](https://github.com/dirkjanm/ROADtools/blob/master/roadlib/roadtools/roadlib/auth.py) of [roadtools](https://github.com/dirkjanm/ROADtools) from [Dirk-Jan](https://twitter.com/_dirkjan) and ported to c#. All credits for the authentication poart goes to him.
+Lantern is a small tool I created to learn something about Azure authentication, tokens and about C#. Maybe It helps you to learn too. The code for authentication, is mainly copied from [auth.py](https://github.com/dirkjanm/ROADtools/blob/master/roadlib/roadtools/roadlib/auth.py) of [roadtools](https://github.com/dirkjanm/ROADtools) from [Dirk-Jan](https://twitter.com/_dirkjan) and ported to c#. All credits for the authentication poart goes to him.
 
 How Azure PRT works is mainly described in these two articles:
 
@@ -27,7 +27,7 @@ You can always see whats going on if you add a proxy. For example like:
 --proxy http://127.0.0.1:8080
 ```
 
-Tipp: Disabel HTTP2 support on your proxy. The library I use does not support HTTP2 and I had problems with burp, if I didn't disables HTTP2.
+Tipp: Disable HTTP2 support on your proxy. The library I use does not support HTTP2 and I had problems with burp, if I didn't disables HTTP2.
 
 ### Help
 
