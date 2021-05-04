@@ -369,6 +369,19 @@ namespace Lantern
             return parsedAccessToken[info].ToString();
         }
 
+        public static byte[] GetByteArray(int size)
+        {
+            Random rnd = new Random();
+            byte[] b = new byte[size]; // convert kb to byte
+            rnd.NextBytes(b);
+            return b;
+        }
+
+        public static string derivedKeys(string sessionKey, string ctx)
+        {
+            return "";
+        }
+
         public static string getToken(TokenOptions opts, string resourceID = "https://graph.windows.net", string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894")
         {
             string result = null;
@@ -377,6 +390,10 @@ namespace Lantern
                 string prtCookie = createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
                 string code = getCodeFromPRTCookie(prtCookie, opts.Proxy, resourceID, clientID);
                 result = authenticateWithCode(code, opts.Proxy, resourceID, clientID);
+            }
+            else if (opts.PRT != null & opts.SessionKey != null)
+            { 
+
             }
             else if (opts.PrtCookie != null)
             {

@@ -42,6 +42,9 @@ namespace Lantern
         [Option(HelpText = "Set PRT")]
         public string PRT { get; set; }
 
+        [Option(HelpText = "Set Session Key")]
+        public string SessionKey { get; set; }
+
         [Option(HelpText = "Set DerivedKey")]
         public string DerivedKey { get; set; }
 

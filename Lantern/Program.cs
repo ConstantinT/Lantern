@@ -193,13 +193,14 @@ namespace Lantern
             }
             if (accesstoken != null && upn != null && tenantId != null)
             {
-                
+
                 // https://github.com/Gerenios/AADInternals/blob/23831d5af045eeaa199ab098d29df9d4a60f460e/PRT_Utils.ps1#L95
-                RSA rsa = RSA.Create(2048);
+                //RSACng rsa = (RSACng)RSA.Create(2048);
+                RSACng rsa = new RSACng(2048);
                 string CN = "CN=7E980AD9-B86D-4306-9425-9AC066FB014A";
                 CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
                 var crs = Convert.ToBase64String(req.CreateSigningRequest());
-                var transportKey = Convert.ToBase64String(rsa.ExportRSAPublicKey());
+                var transportKey = Convert.ToBase64String(rsa.Key.Export(CngKeyBlobFormat.GenericPublicBlob));
                 string responseJoinDevice = Helper.addNewDeviceToAzure(opts.Proxy, accesstoken, crs, transportKey, upn.Split("@")[1], opts.DeviceName, opts.RegisterDevice);
                 JToken parsedJoinResponse = JToken.Parse(responseJoinDevice);
                 byte[] binCert = Convert.FromBase64String(parsedJoinResponse["Certificate"]["RawBody"].ToString());
