@@ -79,9 +79,6 @@ namespace Lantern
         [Option(HelpText = "Set device name", Required = true)]
         public string DeviceName { get; set; }
 
-        [Option(HelpText = "Set Path to store PFX File", Required = true)]
-        public string OutPfxPath { get; set; }
-
         [Option(HelpText = "Set this, if you want only register the device", Default = false)]
         public bool RegisterDevice { get; set; }
 

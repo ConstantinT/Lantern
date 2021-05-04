@@ -205,7 +205,10 @@ namespace Lantern
                 byte[] binCert = Convert.FromBase64String(parsedJoinResponse["Certificate"]["RawBody"].ToString());
                 X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.Exportable);
 
+                string deviceId = cert.Subject.Split("=")[1];
                 Console.WriteLine("Device successfull added to Azure");
+                Console.WriteLine("");
+                Console.WriteLine("The deviceId is: " + deviceId);
                 Console.WriteLine("");
                 var beautified = parsedJoinResponse.ToString(Formatting.Indented);
                 Console.WriteLine(beautified);
@@ -214,9 +217,9 @@ namespace Lantern
                 // https://github.com/dotnet/runtime/issues/19581
                 var keyPair = cert.CopyWithPrivateKey(rsa);
                 byte[] certData = keyPair.Export(X509ContentType.Pfx, "");
-                File.WriteAllBytes(opts.OutPfxPath, certData);
+                File.WriteAllBytes(deviceId + ".pfx", certData);
 
-                Console.WriteLine("Device Certificate written to " + opts.OutPfxPath);
+                Console.WriteLine("Device Certificate written to " + deviceId + ".pfx");
 
             }
             else
