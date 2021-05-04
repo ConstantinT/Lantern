@@ -3,6 +3,14 @@
 
 namespace Lantern
 {
+    [Verb("devicekeys", HelpText = "Play with Device Keys")]
+    class DeviceKeyOptions : TokenOptions
+    {
+        [Option(HelpText = "Set PFX path", Required = true)]
+        public string PFXPath { get; set; }
+
+    }
+
     [Verb("nonce", HelpText = "Request a nonce from Azure.")]
     class NonceOptions
     {
@@ -46,7 +54,7 @@ namespace Lantern
         [Option(HelpText = "Set PRTCookie")]
         public string PrtCookie { get; set; }
 
-        [Option(HelpText = "Set ClientID (ApplicationID)")]
+        [Option(HelpText = "Set ClientID (ApplicationID), for example GraphAPI (1b730954-1685-4b74-9bfd-dac224a7b894)", Default = "1b730954-1685-4b74-9bfd-dac224a7b894")]
         public string ClientID { get; set; }
 
         [Option(HelpText = "Set Client Secret")]
@@ -62,7 +70,7 @@ namespace Lantern
         public string Password { get; set; }
 
         [Option(HelpText = "Set resource ID for access token, for example for Device Management (01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9)", Default = "https://graph.windows.net")]
-        public string RessourceID { get; set; }
+        public string ResourceID { get; set; }
 
     }
     [Verb("device", HelpText = "Join a device to Azure")]
@@ -79,7 +87,5 @@ namespace Lantern
 
         [Option(HelpText = "Set access token")]
         public string AccessToken { get; set; }
-
     }
-
 }

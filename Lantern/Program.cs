@@ -27,13 +27,123 @@ namespace Lantern
         {
             PrintBanner();
             //CommandLine.Parser.Default.ParseArguments<OptionsMutuallyExclusive>(args).WithParsed(RunOptions).WithNotParsed(HandleParseError);
-            Parser.Default.ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions>(args)
+            Parser.Default.ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args)
             .MapResult(
+                (DeviceKeyOptions options) => RunKey(options),
                 (DeviceOptions options) => JoinDevice(options),
                 (NonceOptions options) => RunNonce(options),
                 (CookieOptions options) => RunCookie(options),
                 (TokenOptions options) => RunToken(options),
                 errors => Error());
+        }
+
+        static int RunKey(DeviceKeyOptions opts)
+        {
+            String refreshtoken = null;
+            string tenantId = null;
+            var serializer = new JsonNetSerializer();
+            var urlEncoder = new JwtBase64UrlEncoder();
+            var decoder = new JwtDecoder(serializer, urlEncoder);
+            if (opts.RefreshToken != null)
+            {
+                string initToken = Helper.authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy, AzResourceEnum.MDMResource, AzResourceEnum.AzureMDMClientID);
+                string checkAccessToken = JToken.Parse(initToken)["access_token"].ToString();
+                string decodedaccesstoken = decoder.Decode(checkAccessToken);
+                JToken parsedAccessToken = JToken.Parse(decodedaccesstoken);
+                String aud = parsedAccessToken["aud"].ToString();
+                tenantId = parsedAccessToken["tid"].ToString();
+                if (aud != AzResourceEnum.MDMResource)
+                {
+                    Console.WriteLine("AccessToken does not contain correct Audience...");
+                    return 1;
+                }
+                refreshtoken = opts.RefreshToken;
+            }
+            else if (opts.UserName != null && opts.Password != null)
+            {
+                String initTokens = Helper.getToken(opts, AzResourceEnum.MDMResource, AzResourceEnum.AzureMDMClientID);
+                if (initTokens == null)
+                {
+                    Console.WriteLine("Authentication failed... ");
+                    return 1;
+                }
+                JToken parsedInitToken = JToken.Parse(initTokens);
+                tenantId = Helper.getTenantFromAccessToken(parsedInitToken["access_token"].ToString());
+                refreshtoken = parsedInitToken["refresh_token"].ToString();               
+            }
+            if (refreshtoken != null && tenantId != null)
+            {
+                X509Certificate2 cert = new X509Certificate2(opts.PFXPath, "", X509KeyStorageFlags.Exportable);
+                var privateKey = cert.GetRSAPrivateKey();
+                var x5c = Convert.ToBase64String(cert.Export(X509ContentType.Cert));
+
+                string nonce = Helper.getNonce2(opts.Proxy);
+
+                Dictionary<string, string> headerRaw = new Dictionary<string, string>
+                    {
+                        { "alg", "RS256" },
+                        { "typ", "JWT" },
+                        { "x5c", x5c }
+                    };
+
+                string headerRawString = JsonConvert.SerializeObject(headerRaw, Formatting.None);
+                var header = Helper.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(headerRawString));
+
+                Dictionary<string, string> rawPayload = new Dictionary<string, string>
+                    {
+                        { "request_nonce", nonce },
+                        { "scope", "openid aza ugs" },
+                        { "win_ver", "10.0.18363.0" },
+                        { "grant_type", "refresh_token" },
+                        { "refresh_token", refreshtoken },
+                        { "client_id", "29d9ed98-a469-4536-ade2-f981bc1d605e" }
+
+                    };
+
+                string rawPayloadString = JsonConvert.SerializeObject(rawPayload, Formatting.None);
+                var payload = Helper.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(rawPayloadString));
+
+                var dataBin = System.Text.Encoding.UTF8.GetBytes(header + "." + payload);
+
+                var signature = privateKey.SignData(dataBin, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                var signatureb64 = Helper.Base64UrlEncode(signature);
+
+                var JWT = header + "." + payload + "." + signatureb64;
+
+                var formContent = new FormUrlEncodedContent(new[]
+                   {
+                    new KeyValuePair<string, string>("windows_api_version", "2.0"),
+                    new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
+                    new KeyValuePair<string, string>("request", JWT),
+                    new KeyValuePair<string, string>("client_info", "2")
+                    });
+
+                string result = Helper.postToTokenEndpoint(formContent, opts.Proxy, tenantId);
+                JToken parsedResult = JToken.Parse(result);
+                string PRT = parsedResult["refresh_token"].ToString();
+                string JWE = parsedResult["session_key_jwe"].ToString();
+                string[] JWESplitted = JWE.Split(".");
+                byte[] encKey = Helper.Base64Decode(JWESplitted[1]);
+                var formatter = new System.Security.Cryptography.RSAOAEPKeyExchangeDeformatter(privateKey);
+                var dekey = formatter.DecryptKeyExchange(encKey);
+                string decryptionKey = Convert.ToBase64String(dekey);
+
+                Console.WriteLine();
+                Console.WriteLine("Here is your PRT:");
+                Console.WriteLine();
+                Console.WriteLine(Convert.ToBase64String(Encoding.ASCII.GetBytes(PRT)));
+                Console.WriteLine();
+                Console.WriteLine("Here is your session key:");
+                Console.WriteLine();
+                Console.WriteLine(decryptionKey);
+
+                return 0;
+            }
+            else
+            {
+                Console.WriteLine("For this you need a username and a password");
+                return 1;
+            }
         }
 
         static int JoinDevice(DeviceOptions opts)
@@ -52,9 +162,8 @@ namespace Lantern
                 String aud = parsedAccessToken["aud"].ToString();
                 tenantId = parsedAccessToken["tid"].ToString();
                 upn = parsedAccessToken["upn"].ToString();
-                if (aud != AzResourceEnum.DeviceMgmt)
+                if (aud != AzResourceEnum.DeviceMgmtClientID)
                 {
-
                     Console.WriteLine("AccessToken does not contain correct Audience...");
                     return 1;
                 }
@@ -76,7 +185,7 @@ namespace Lantern
                 var parsedInitAccessToken = JToken.Parse(initAccesstoken);
                 tenantId = parsedInitAccessToken["tid"].ToString();
                 upn = parsedInitAccessToken["upn"].ToString();
-                string tokenForDevMgmt = Helper.getAccessTokenWithRefreshtokenForRessource(refreshtoken, "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9", tenantId, opts.Proxy);
+                string tokenForDevMgmt = Helper.getAccessTokenWithRefreshtoken(refreshtoken, "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9", tenantId, opts.Proxy);
                 JToken parsedTokenForDevMgmt = JToken.Parse(tokenForDevMgmt);
                 accesstoken = parsedTokenForDevMgmt["access_token"].ToString();
 
@@ -104,7 +213,7 @@ namespace Lantern
                 
                 // https://github.com/dotnet/runtime/issues/19581
                 var keyPair = cert.CopyWithPrivateKey(rsa);
-                byte[] certData = keyPair.Export(X509ContentType.Pfx, "Lantern");
+                byte[] certData = keyPair.Export(X509ContentType.Pfx, "");
                 File.WriteAllBytes(opts.OutPfxPath, certData);
 
                 Console.WriteLine("Device Certificate written to " + opts.OutPfxPath);
@@ -168,7 +277,7 @@ namespace Lantern
         static int RunToken(TokenOptions opts)
         {
 
-            String result = Helper.getToken(opts);
+            String result = Helper.getToken(opts, opts.ResourceID, opts.ClientID);
             if (result != null)
             {
                 var serializer = new JsonNetSerializer();
