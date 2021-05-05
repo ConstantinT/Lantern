@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -243,6 +244,12 @@ namespace Lantern
             return bytes.ToArray();
         }
 
+        //https://stackoverflow.com/questions/311165/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-and-vice-versa
+        public static string Binary2Hex(byte[] ba)
+        {
+            return BitConverter.ToString(ba).Replace("-", "");
+        }
+
         //https://stackoverflow.com/questions/1228701/code-for-decoding-encoding-a-modified-base64-url
         public static byte[] Base64Decode(string arg)
         {
@@ -270,9 +277,9 @@ namespace Lantern
             return s;
         }
 
-        public static string createPRTCookie(string prt, string context, string derived_sessionkey, string proxy)
+        public static string createPRTCookie(string prt, string context, string derived_sessionkey, string proxy, byte[] contextBytes = null, byte[] sessionKeyBytes = null)
         {
-            string secret = derived_sessionkey.Replace(" ", "");
+            
             string nonce = getNonce(proxy);
 
             byte[] data = Base64Decode(prt);
@@ -286,17 +293,35 @@ namespace Lantern
                 { "request_nonce", nonce }
             };
 
-            var header = new Dictionary<string, object>
+            Dictionary<string, object> header = null;
+            if (context != null)
             {
-                { "ctx", Hex2Binary(context) }
-            };
-
+                header = new Dictionary<string, object>
+                {
+                    { "ctx", Hex2Binary(context) }
+                };
+            }
+            else
+            {
+                header = new Dictionary<string, object>
+                {
+                    { "ctx", contextBytes }
+                };
+            }
             IJwtAlgorithm algorithm = new HMACSHA256Algorithm(); // symmetric
             IJsonSerializer serializer = new JsonNetSerializer();
             IBase64UrlEncoder urlEncoder = new JwtBase64UrlEncoder();
             IJwtEncoder encoder = new JwtEncoder(algorithm, serializer, urlEncoder);
 
-            var sdata = Hex2Binary(secret);
+            byte[] sdata = null;
+            if (derived_sessionkey != null)
+            {
+                string secret = derived_sessionkey.Replace(" ", "");
+                sdata = Hex2Binary(secret);
+            } else
+            {
+                sdata = sessionKeyBytes;
+            }
             var cookie = encoder.Encode(header, payload, sdata);
             return cookie;
         }
@@ -377,9 +402,39 @@ namespace Lantern
             return b;
         }
 
-        public static string derivedKeys(string sessionKey, string ctx)
+        public static byte[] combineByteArrays(byte[] first, byte[] second)
         {
-            return "";
+            return first.Concat(second).ToArray();
+        }
+
+        public static byte[] createDerivedKey(byte[] sessionKey, byte[] context)
+        {
+            byte[] sessionKeyBytes = sessionKey;
+            byte[] contextBytes = context;
+            byte[] label = System.Text.Encoding.UTF8.GetBytes("AzureAD-SecureConversation");
+
+            var first = new byte[]{ 0x00, 0x00, 0x00, 0x01 };
+            var second = new byte[] { 0x00 };
+            var third = new byte[] { 0x00, 0x00, 0x01, 0x00 };
+            
+            var value = combineByteArrays(first, label);
+            value = combineByteArrays(value, second);
+            value = combineByteArrays(value, contextBytes);
+            value = combineByteArrays(value, third);
+
+            var hmac = new System.Security.Cryptography.HMACSHA256(sessionKeyBytes);
+
+            return hmac.ComputeHash(value);
+        }
+
+        public static byte[] ConvertToByteArray(string str, Encoding encoding)
+        {
+            return encoding.GetBytes(str);
+        }
+
+        public static String ToBinary(Byte[] data)
+        {
+            return string.Join(" ", data.Select(byt => Convert.ToString(byt, 2).PadLeft(8, '0')));
         }
 
         public static string getToken(TokenOptions opts, string resourceID = "https://graph.windows.net", string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894")
@@ -392,8 +447,17 @@ namespace Lantern
                 result = authenticateWithCode(code, opts.Proxy, resourceID, clientID);
             }
             else if (opts.PRT != null & opts.SessionKey != null)
-            { 
+            {
+                var context = GetByteArray(24);
+                var decodedKey = Base64Decode(opts.SessionKey);
+                var derivedKey = createDerivedKey(decodedKey, context);
 
+                var contextHex = Binary2Hex(context);
+                var derivedSessionKeyHex = Binary2Hex(derivedKey);
+
+                string prtCookie = createPRTCookie(opts.PRT, contextHex, derivedSessionKeyHex, opts.Proxy);
+                string code = getCodeFromPRTCookie(prtCookie, opts.Proxy, resourceID, clientID);
+                result = authenticateWithCode(code, opts.Proxy, resourceID, clientID);
             }
             else if (opts.PrtCookie != null)
             {
