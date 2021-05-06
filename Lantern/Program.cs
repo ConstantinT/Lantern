@@ -29,7 +29,7 @@ namespace Lantern
             //CommandLine.Parser.Default.ParseArguments<OptionsMutuallyExclusive>(args).WithParsed(RunOptions).WithNotParsed(HandleParseError);
             Parser.Default.ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args)
             .MapResult(
-                (DeviceKeyOptions options) => RunKey(options),
+                (DeviceKeyOptions options) => RunDeviceKeys(options),
                 (DeviceOptions options) => JoinDevice(options),
                 (NonceOptions options) => RunNonce(options),
                 (CookieOptions options) => RunCookie(options),
@@ -37,7 +37,7 @@ namespace Lantern
                 errors => Error());
         }
 
-        static int RunKey(DeviceKeyOptions opts)
+        static int RunDeviceKeys(DeviceKeyOptions opts)
         {
             String refreshtoken = null;
             string tenantId = null;
@@ -136,12 +136,14 @@ namespace Lantern
                 Console.WriteLine("Here is your session key:");
                 Console.WriteLine();
                 Console.WriteLine(decryptionKey);
+                Console.WriteLine("");
 
                 return 0;
             }
             else
             {
                 Console.WriteLine("For this you need a username and a password");
+                Console.WriteLine("");
                 return 1;
             }
         }
@@ -221,6 +223,7 @@ namespace Lantern
                 File.WriteAllBytes(deviceId + ".pfx", certData);
 
                 Console.WriteLine("Device Certificate written to " + deviceId + ".pfx");
+                Console.WriteLine("");
 
             }
             else
@@ -233,6 +236,7 @@ namespace Lantern
 
         static int Error() {
             Console.WriteLine("Please tell me want you want to do...");
+            Console.WriteLine("");
             return 1;
         
         }
@@ -255,25 +259,42 @@ namespace Lantern
         {
 
             Console.WriteLine(Helper.getNonce(opts.Proxy));
+            Console.WriteLine("");
             return 0;
         }
 
         static int RunCookie(CookieOptions opts)
         {
-            if (opts.PRT == null | opts.DerivedKey == null | opts.Context == null)
+            string PRTCookie = null;
+            if (opts.PRT != null && opts.DerivedKey != null && opts.Context == null)
+            {
+                PRTCookie = Helper.createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
+               
+            }
+            else if (opts.PRT != null & opts.SessionKey != null)
+            {
+                var context = Helper.GetByteArray(24);
+                var decodedKey = Helper.Base64Decode(opts.SessionKey);
+                var derivedKey = Helper.createDerivedKey(decodedKey, context);
+
+                var contextHex = Helper.Binary2Hex(context);
+                var derivedSessionKeyHex = Helper.Binary2Hex(derivedKey);
+
+                PRTCookie = Helper.createPRTCookie(opts.PRT, contextHex, derivedSessionKeyHex, opts.Proxy);
+            }
+            else
             {
                 Console.WriteLine("Please set the corect arguments.");
                 return 1;
             }
-            else
-            {
-                Console.WriteLine("Here is your PRT-Cookie:");
-                Console.WriteLine("");
-                Console.WriteLine(Helper.createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy));
-                Console.WriteLine("");
-                Console.WriteLine("You can use it with this tool or add it to a browser.");
-                Console.WriteLine("Set as cookie \"x-ms-RefreshTokenCredential\" with HTTPOnly flag");
-            }
+
+            Console.WriteLine("Here is your PRT-Cookie:");
+            Console.WriteLine("");
+            Console.WriteLine(PRTCookie);
+            Console.WriteLine("");
+            Console.WriteLine("You can use it with this tool or add it to a browser.");
+            Console.WriteLine("Set as cookie \"x-ms-RefreshTokenCredential\" with HTTPOnly flag");
+            Console.WriteLine("");
 
             return 0;
         }
@@ -300,6 +321,7 @@ namespace Lantern
                 Console.WriteLine("");
                 var beautified = parsedJson.ToString(Formatting.Indented);
                 Console.WriteLine(beautified);
+                Console.WriteLine("");
 
                 return 0;
             }

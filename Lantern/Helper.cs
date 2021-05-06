@@ -463,8 +463,6 @@ namespace Lantern
             {
                 string code = getCodeFromPRTCookie(opts.PrtCookie, opts.Proxy);
                 result = authenticateWithCode(code, opts.Proxy);
-
-
             }
             else if (opts.RefreshToken != null)
             {
@@ -478,7 +476,7 @@ namespace Lantern
                 }
                 else
                 {
-                    result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy, opts.ResourceID);
+                    result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy, opts.ResourceID, opts.ClientID);
                 }
                 
             }

@@ -3,7 +3,7 @@
 
 namespace Lantern
 {
-    [Verb("devicekeys", HelpText = "Play with Device Keys")]
+    [Verb("devicekeys", HelpText = "Play with Device Keys - Ask for PRT and SessionKey for a certificate")]
     class DeviceKeyOptions : TokenOptions
     {
         [Option(HelpText = "Set PFX path", Required = true)]
@@ -17,6 +17,7 @@ namespace Lantern
         [Option(HelpText = "Set Proxy")]
         public string Proxy { get; set; }
     }
+
     [Verb("cookie", HelpText = "Create a PRT Cookie for further usage or your browser")]
     class CookieOptions
     {
@@ -31,7 +32,8 @@ namespace Lantern
         [Option(HelpText = "Set Context")]
         public string Context { get; set; }
 
-
+        [Option(HelpText = "Set Session Key")]
+        public string SessionKey { get; set; }
     }
     [Verb("token", HelpText = "Play with Azure Tokens")]
     class TokenOptions
@@ -76,6 +78,7 @@ namespace Lantern
         public string ResourceID { get; set; }
 
     }
+
     [Verb("device", HelpText = "Join a device to Azure")]
     class DeviceOptions : TokenOptions
     {
