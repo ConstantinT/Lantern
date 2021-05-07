@@ -1,4 +1,5 @@
 ﻿using CommandLine;
+using CommandLine.Text;
 using JWT;
 using JWT.Algorithms;
 using JWT.Builder;
@@ -22,19 +23,54 @@ namespace Lantern
 
     class Program
     {
-       
-        static void Main(string[] args)
+        static void PrintBanner()
+        {
+            String banner = @"
+.____                   __                       
+|    |   _____    _____/  |_  ___________  ____  
+|    |   \__  \  /    \   __\/ __ \_  __ \/    \ 
+|    |___ / __ \|   |  \  | \  ___/|  | \/   |  \
+|_______ (____  /___|  /__|  \___  >__|  |___|  /
+        \/    \/     \/          \/           \/ ";
+            Console.WriteLine("");
+            Console.WriteLine(banner);
+            Console.WriteLine("");
+        }
+
+
+        static int DisplayHelp(ParserResult<object> parserResult)
+        {
+            Console.WriteLine(HelpText.AutoBuild(parserResult, h => {
+                h.AdditionalNewLineAfterOption = false;
+                h.Heading = "Lantern 0.0.1-alpha"; //change header
+                h.Copyright = ""; //change copyright text
+                return h;
+            }));
+            return 1;
+        }
+
+        static int Main(string[] args)
         {
             PrintBanner();
-            //CommandLine.Parser.Default.ParseArguments<OptionsMutuallyExclusive>(args).WithParsed(RunOptions).WithNotParsed(HandleParseError);
-            Parser.Default.ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args)
-            .MapResult(
-                (DeviceKeyOptions options) => RunDeviceKeys(options),
-                (DeviceOptions options) => JoinDevice(options),
-                (NonceOptions options) => RunNonce(options),
-                (CookieOptions options) => RunCookie(options),
-                (TokenOptions options) => RunToken(options),
-                errors => Error());
+            var parserResult = new Parser(c => c.HelpWriter = null).ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args);
+            return parserResult.MapResult(
+                    (DeviceKeyOptions options) => RunDeviceKeys(options),
+                    (DeviceOptions options) => JoinDevice(options),
+                    (NonceOptions options) => RunNonce(options),
+                    (CookieOptions options) => RunCookie(options),
+                    (TokenOptions options) => RunToken(options),
+                    errs => DisplayHelp(parserResult)
+            );
+
+            
+            //Parser.Default.ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args)
+            //.MapResult(
+            //    (DeviceKeyOptions options) => RunDeviceKeys(options),
+            //    (DeviceOptions options) => JoinDevice(options),
+            //    (NonceOptions options) => RunNonce(options),
+            //    (CookieOptions options) => RunCookie(options),
+            //    (TokenOptions options) => RunToken(options),
+            //    errors => Error());
         }
 
         static int RunDeviceKeys(DeviceKeyOptions opts)
@@ -59,7 +95,7 @@ namespace Lantern
                 }
                 refreshtoken = opts.RefreshToken;
             }
-            else if (opts.UserName != null && opts.Password != null)
+            else
             {
                 String initTokens = Helper.getToken(opts, AzResourceEnum.MDMResource, AzResourceEnum.AzureMDMClientID);
                 if (initTokens == null)
@@ -71,6 +107,7 @@ namespace Lantern
                 tenantId = Helper.getTenantFromAccessToken(parsedInitToken["access_token"].ToString());
                 refreshtoken = parsedInitToken["refresh_token"].ToString();               
             }
+
             if (refreshtoken != null && tenantId != null)
             {
                 X509Certificate2 cert = new X509Certificate2(opts.PFXPath, "", X509KeyStorageFlags.Exportable);
@@ -120,25 +157,47 @@ namespace Lantern
 
                 string result = Helper.postToTokenEndpoint(formContent, opts.Proxy, tenantId);
                 JToken parsedResult = JToken.Parse(result);
-                string PRT = parsedResult["refresh_token"].ToString();
-                string JWE = parsedResult["session_key_jwe"].ToString();
-                string[] JWESplitted = JWE.Split(".");
-                byte[] encKey = Helper.Base64Decode(JWESplitted[1]);
-                var formatter = new System.Security.Cryptography.RSAOAEPKeyExchangeDeformatter(privateKey);
-                var dekey = formatter.DecryptKeyExchange(encKey);
-                string decryptionKey = Convert.ToBase64String(dekey);
+                
+                if (parsedResult["refresh_token"] != null && parsedResult["session_key_jwe"] != null)
+                {
+                    string PRT = parsedResult["refresh_token"].ToString();
+                    string JWE = parsedResult["session_key_jwe"].ToString();
+                    string[] JWESplitted = JWE.Split(".");
+                    byte[] encKey = Helper.Base64Decode(JWESplitted[1]);
+                    var formatter = new System.Security.Cryptography.RSAOAEPKeyExchangeDeformatter(privateKey);
+                    var dekey = formatter.DecryptKeyExchange(encKey);
+                    string decryptionKey = Convert.ToBase64String(dekey);
 
-                Console.WriteLine();
-                Console.WriteLine("Here is your PRT:");
-                Console.WriteLine();
-                Console.WriteLine(Convert.ToBase64String(Encoding.ASCII.GetBytes(PRT)));
-                Console.WriteLine();
-                Console.WriteLine("Here is your session key:");
-                Console.WriteLine();
-                Console.WriteLine(decryptionKey);
-                Console.WriteLine("");
+                    Console.WriteLine();
+                    Console.WriteLine("Here is your PRT:");
+                    Console.WriteLine();
+                    Console.WriteLine(Convert.ToBase64String(Encoding.ASCII.GetBytes(PRT)));
+                    Console.WriteLine();
+                    Console.WriteLine("Here is your session key:");
+                    Console.WriteLine();
+                    Console.WriteLine(decryptionKey);
+                    Console.WriteLine("");
 
-                return 0;
+                    return 0;
+                }
+                else if (parsedResult["error_description"] != null)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Something went wrong:");
+                    Console.WriteLine();
+                    Console.WriteLine(parsedResult["error_description"].ToString());
+                    Console.WriteLine("");
+
+                    return 1;
+                }else
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Something completly went wrong... sorry");
+                    Console.WriteLine();
+
+                    return 1;
+                }
+                
             }
             else
             {
@@ -235,24 +294,10 @@ namespace Lantern
         }
 
         static int Error() {
-            Console.WriteLine("Please tell me want you want to do...");
+            Console.WriteLine("Please specify an action and options!");
             Console.WriteLine("");
             return 1;
         
-        }
-
-        static void PrintBanner()
-        {
-            String banner = @"
-.____                   __                       
-|    |   _____    _____/  |_  ___________  ____  
-|    |   \__  \  /    \   __\/ __ \_  __ \/    \ 
-|    |___ / __ \|   |  \  | \  ___/|  | \/   |  \
-|_______ (____  /___|  /__|  \___  >__|  |___|  /
-        \/    \/     \/          \/           \/ ";
-            Console.WriteLine("");
-            Console.WriteLine(banner);
-            Console.WriteLine("");
         }
 
         static int RunNonce(NonceOptions opts)
@@ -308,8 +353,18 @@ namespace Lantern
                 var serializer = new JsonNetSerializer();
                 var urlEncoder = new JwtBase64UrlEncoder();
                 var decoder = new JwtDecoder(serializer, urlEncoder);
-
                 JToken parsedJson = JToken.Parse(result);
+
+                if (parsedJson["error"] != null)
+                {
+                    Console.WriteLine("Something went wrong");
+                    Console.WriteLine("");
+                    
+                    Console.WriteLine(parsedJson["error_description"].ToString());
+                    Console.WriteLine("");
+                    return 1;
+                }
+                                
                 if (parsedJson["id_token"] != null)
                 {
                     var id_token = decoder.Decode(parsedJson["id_token"].ToString());

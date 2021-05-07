@@ -6,9 +6,8 @@ namespace Lantern
     [Verb("devicekeys", HelpText = "Play with Device Keys - Ask for PRT and SessionKey for a certificate")]
     class DeviceKeyOptions : TokenOptions
     {
-        [Option(HelpText = "Set PFX path", Required = true)]
+        [Option(HelpText = "Specify path to device certificate (PFX).", Required = true)]
         public string PFXPath { get; set; }
-
     }
 
     [Verb("nonce", HelpText = "Request a nonce from Azure.")]
@@ -88,7 +87,7 @@ namespace Lantern
         [Option(HelpText = "Set this, if you want only register the device", Default = false)]
         public bool RegisterDevice { get; set; }
 
-        [Option(HelpText = "Set access token")]
+        [Option(HelpText = "Set access token - use token with --resourceid https://enrollment.manage.microsoft.com and --clientid 01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9")]
         public string AccessToken { get; set; }
     }
 }

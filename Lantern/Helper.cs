@@ -158,12 +158,12 @@ namespace Lantern
                 message.Headers.Add("return-client-request-id", "true");
                 message.Content = formContent;
                 var response = client.SendAsync(message).Result;
-                if (response.IsSuccessStatusCode)
-                {
+                //if (response.IsSuccessStatusCode)
+                //{
                     var result = response.Content.ReadAsStringAsync().Result;
                     return result;
-                }
-                return null;
+                //}
+                //return null;
             }
         }
 
@@ -461,8 +461,8 @@ namespace Lantern
             }
             else if (opts.PrtCookie != null)
             {
-                string code = getCodeFromPRTCookie(opts.PrtCookie, opts.Proxy);
-                result = authenticateWithCode(code, opts.Proxy);
+                string code = getCodeFromPRTCookie(opts.PrtCookie, opts.Proxy, resourceID, clientID);
+                result = authenticateWithCode(code, opts.Proxy, resourceID, clientID);
             }
             else if (opts.RefreshToken != null)
             {
