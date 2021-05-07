@@ -58,12 +58,11 @@ Lantern 0.0.1-alpha
 
   version       Display version information.
 
-Please tell me want you want to do...
 ```
 
 ### Nonce
 
-To request a nonce you can use the following command: 
+Request a nonce you can use the following command: 
 
 ```cmd
 Lantern.exe nonce
@@ -71,7 +70,7 @@ Lantern.exe nonce
 
 ### PRT-Cookie
 
-To create a PRT-Cookie for the browser you can use:
+Create a PRT-Cookie for the browser you can use:
 
 ```cmd
 Lantern.exe cookie --derivedkey <Key from Mimikatz> --context <Context from Mimikatz> --prt <PRT from Mimikatz>
@@ -83,7 +82,7 @@ Lantern.exe cookie --sessionkey <SessionKey> --prt <PRT from Mimikatz>
 
 ### Access Token
 
-To create an access token you can use various combination:
+Create an access token you can use various combination:
 
 ```cmd
 Lantern.exe token --derivedkey <Key from Mimikatz> --context <Context from Mimikatz> --prt <PRT from Mimikatz>
@@ -103,7 +102,7 @@ Lantern.exe token --refreshtoken <RefreshToken>
 
 ### DeviceJoin
 
-To join a device:
+Join a device:
 
 ```cmd
 Lantern.exe device --accesstoken (or some combination from the token part) --devicename <Name> --outpfxfile <Some path>
@@ -111,7 +110,7 @@ Lantern.exe device --accesstoken (or some combination from the token part) --dev
 
 ### Device Keys
 
-To generate PRT and Session Key
+Generate PRT and Session Key
 
 ```cmd
 
