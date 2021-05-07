@@ -295,7 +295,7 @@ namespace Lantern
 
         static int Error() {
             Console.WriteLine("Please specify an action and options!");
-            Console.WriteLine("");
+            Console.WriteLine(" ");
             return 1;
         
         }
