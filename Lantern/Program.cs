@@ -52,8 +52,9 @@ namespace Lantern
         static int Main(string[] args)
         {
             PrintBanner();
-            var parserResult = new Parser(c => c.HelpWriter = null).ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args);
+            var parserResult = new Parser(c => c.HelpWriter = null).ParseArguments<P2POptions, NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args);
             return parserResult.MapResult(
+                    (P2POptions options) => RunP2PAction(options),
                     (DeviceKeyOptions options) => RunDeviceKeys(options),
                     (DeviceOptions options) => JoinDevice(options),
                     (NonceOptions options) => RunNonce(options),
@@ -71,6 +72,71 @@ namespace Lantern
             //    (CookieOptions options) => RunCookie(options),
             //    (TokenOptions options) => RunToken(options),
             //    errors => Error());
+        }
+
+        private static int RunP2PAction(P2POptions opts)
+        {
+            if (opts.PRT != null && opts.Context != null && opts.DerivedKey != null)
+            {
+                RSACng rsa = new RSACng(2048);
+                string CN = "CN=";
+                CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+                var csr = Convert.ToBase64String(req.CreateSigningRequest());
+                string nonce = Helper.getNonce2(opts.Proxy);
+                
+                var ctx = Helper.Hex2Binary(opts.Context);
+                Dictionary<string, object> headerRaw = new Dictionary<string, object>
+                    { 
+                        { "ctx", ctx }
+                    };
+
+                byte[] data = Helper.Base64Decode(opts.PRT);
+                string prtdecoded = Encoding.UTF8.GetString(data);
+
+                Dictionary<string, object> payload = new Dictionary<string, object>
+                {
+                    { "iss", "aad:brokerplugin" },
+                    { "grant_type", "refresh_token" },
+                    { "request_nonce", nonce },
+                    { "scope", "openid aza ugs" },
+                    { "refresh_token", prtdecoded },
+                    { "client_id", "38aa3b87-a06d-4817-b275-7a316988d93b" },
+                    { "cert_token_use", "user_cert" },
+                    { "csr_type", "http://schemas.microsoft.com/windows/pki/2009/01/enrollment#PKCS10" },
+                    { "csr", csr }
+                };
+
+                var JWT = Helper.signJWT(headerRaw, payload, opts.DerivedKey);
+                var result = Helper.requestP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+                JToken parsedResult = JToken.Parse(result);
+
+                var binCert = Convert.FromBase64String(parsedResult["x5c"].ToString());
+
+                X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);
+                string deviceId = cert.Subject.Split("=")[1];
+                 deviceId = deviceId.Split(",")[0];
+                var keyPair = cert.CopyWithPrivateKey(rsa);
+                byte[] certData = keyPair.Export(X509ContentType.Pfx, "");
+                File.WriteAllBytes(deviceId + ".pfx", certData);
+
+                String certHeader = "-----BEGIN PUBLIC KEY-----\n";
+                String certend = "\n-----END PUBLIC KEY-----";
+
+                string caCert = certHeader + parsedResult["x5c_ca"].ToString() + certend;
+                File.WriteAllText(deviceId + "-P2P-CA.der", caCert);
+
+                Console.WriteLine();
+                Console.WriteLine(" Subject: " + cert.Subject);
+                Console.WriteLine(" Issuer: " + cert.Issuer);
+                Console.WriteLine(" CA file name: " + deviceId + "-P2P-CA.der");
+                Console.WriteLine(" PFX file name: " + deviceId + ".pfx");
+                return 0;
+            }
+            else
+            {
+                Console.WriteLine("Use --prt --derivedkey and --context.... Other methods are not implemented yet...");
+            }
+            return 1;
         }
 
         static int RunDeviceKeys(DeviceKeyOptions opts)

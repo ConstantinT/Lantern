@@ -167,6 +167,17 @@ namespace Lantern
             }
         }
 
+        public static string requestP2PCertificate (string JWT, string tenant, string proxy)
+        {
+            var formContent = new FormUrlEncodedContent(new[]
+                {
+                new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
+                new KeyValuePair<string, string>("request", JWT)
+                });
+
+            return postToTokenEndpoint(formContent, proxy, tenant);
+        }
+
         public static string authenticateWithClientIDandSecret(string clientID, string clientSecret, string tenant, string proxy, string ressourceId)
         {
             var formContent = new FormUrlEncodedContent(new[]
@@ -324,6 +335,17 @@ namespace Lantern
             }
             var cookie = encoder.Encode(header, payload, sdata);
             return cookie;
+        }
+
+        public static string signJWT(Dictionary<string, object> header, Dictionary<string, object> payload, string key)
+        {
+            IJwtAlgorithm algorithm = new HMACSHA256Algorithm(); // symmetric
+            IJsonSerializer serializer = new JsonNetSerializer();
+            IBase64UrlEncoder urlEncoder = new JwtBase64UrlEncoder();
+            IJwtEncoder encoder = new JwtEncoder(algorithm, serializer, urlEncoder);
+            string secret = key.Replace(" ", "");
+            byte[] sdata = Hex2Binary(secret);
+            return encoder.Encode(header, payload, sdata); 
         }
 
         public static String getNonce(string proxy)

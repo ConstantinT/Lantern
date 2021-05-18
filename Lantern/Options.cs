@@ -10,6 +10,13 @@ namespace Lantern
         public string PFXPath { get; set; }
     }
 
+    [Verb("p2pcert", HelpText = "Ask for a P2P Certificate")]
+    class P2POptions : TokenOptions
+    {
+        [Option(HelpText = "Specify path to device certificate (PFX).")]
+        public string PFXPath { get; set; }
+    }
+
     [Verb("nonce", HelpText = "Request a nonce from Azure.")]
     class NonceOptions
     {
