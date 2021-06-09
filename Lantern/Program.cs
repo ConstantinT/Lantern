@@ -7,6 +7,7 @@ using JWT.Serializers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -76,9 +77,11 @@ namespace Lantern
 
         private static int RunP2PAction(P2POptions opts)
         {
-            if (opts.PRT != null && opts.Context != null && opts.DerivedKey != null)
+            String result = null;
+            RSA rsa;
+            if (opts.PRT != null && opts.Context != null && opts.DerivedKey != null && opts.Tenant != null)
             {
-                RSACng rsa = new RSACng(2048);
+                rsa = new RSACng(2048);
                 string CN = "CN=";
                 CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
                 var csr = Convert.ToBase64String(req.CreateSigningRequest());
@@ -107,14 +110,74 @@ namespace Lantern
                 };
 
                 var JWT = Helper.signJWT(headerRaw, payload, opts.DerivedKey);
-                var result = Helper.requestP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+                result = Helper.requestP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+                
+            }
+            else if (opts.PFXPath != null && opts.Tenant != null && opts.DeviceName != null)
+            {
+                
+                X509Certificate2 cert = new X509Certificate2(opts.PFXPath, opts.PFXPassword, X509KeyStorageFlags.Exportable);
+                rsa = cert.GetRSAPrivateKey();
+                var x5c = Convert.ToBase64String(cert.Export(X509ContentType.Cert));
+                var CN = cert.Subject;
+                CertificateRequest req = new CertificateRequest(CN, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                var csr = Convert.ToBase64String(req.CreateSigningRequest());
+
+                string nonce = Helper.getNonce2(opts.Proxy);
+
+                Dictionary<string, string> headerRaw = new Dictionary<string, string>
+                    {
+                        { "alg", "RS256" },
+                        { "typ", "JWT" },
+                        { "x5c", x5c }
+                    };
+
+                string headerRawString = JsonConvert.SerializeObject(headerRaw, Formatting.None);
+                var header = Helper.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(headerRawString));
+
+                var dnsNames = new List<string>();
+                dnsNames.Add(opts.DeviceName);
+
+                Dictionary<string, object> rawPayload = new Dictionary<string, object>
+                    {
+                        { "request_nonce", nonce },
+                        { "win_ver", "10.0.18363.0" },
+                        { "grant_type", "device_auth" },
+                        { "cert_token_use", "device_cert" },
+                        { "client_id", "38aa3b87-a06d-4817-b275-7a316988d93b" },
+                        { "csr_type", "http://schemas.microsoft.com/windows/pki/2009/01/enrollment#PKCS10" },
+                        { "csr",  csr },
+                        { "netbios_name", "JuniTest" },
+                        { "dns_names", dnsNames }
+                    };
+
+                string rawPayloadString = JsonConvert.SerializeObject(rawPayload, Formatting.None);
+                var payload = Helper.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(rawPayloadString));
+
+                var dataBin = System.Text.Encoding.UTF8.GetBytes(header + "." + payload);
+
+                var signature = rsa.SignData(dataBin, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                var signatureb64 = Helper.Base64UrlEncode(signature);
+
+                var JWT = header + "." + payload + "." + signatureb64;
+
+                result = Helper.requestP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+            }
+            else 
+            {
+                Console.WriteLine("Use --prt --derivedkey --context --tennant or with --pfxpath --tenant --devicename.... Other methods are not implemented yet...");
+                return 1;
+            }
+
+            if (result != null)
+            {
                 JToken parsedResult = JToken.Parse(result);
 
                 var binCert = Convert.FromBase64String(parsedResult["x5c"].ToString());
 
                 X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);
                 string deviceId = cert.Subject.Split("=")[1];
-                 deviceId = deviceId.Split(",")[0];
+                deviceId = deviceId.Split(",")[0];
                 var keyPair = cert.CopyWithPrivateKey(rsa);
                 byte[] certData = keyPair.Export(X509ContentType.Pfx, "");
                 File.WriteAllBytes(deviceId + ".pfx", certData);
@@ -131,11 +194,7 @@ namespace Lantern
                 Console.WriteLine(" CA file name: " + deviceId + "-P2P-CA.der");
                 Console.WriteLine(" PFX file name: " + deviceId + ".pfx");
                 return 0;
-            }
-            else
-            {
-                Console.WriteLine("Use --prt --derivedkey and --context.... Other methods are not implemented yet...");
-            }
+            } 
             return 1;
         }
 

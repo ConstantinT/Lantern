@@ -15,6 +15,11 @@ namespace Lantern
     {
         [Option(HelpText = "Specify path to device certificate (PFX).")]
         public string PFXPath { get; set; }
+        [Option(HelpText = "Specify a password for the certificate", Default = "")]
+        public string PFXPassword { get; set; }
+
+        [Option(HelpText = "Device Name")]
+        public string DeviceName { get; set; }
     }
 
     [Verb("nonce", HelpText = "Request a nonce from Azure.")]
