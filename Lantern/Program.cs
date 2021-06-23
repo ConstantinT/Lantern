@@ -436,10 +436,9 @@ namespace Lantern
         static int RunCookie(CookieOptions opts)
         {
             string PRTCookie = null;
-            if (opts.PRT != null && opts.DerivedKey != null && opts.Context == null)
+            if (opts.PRT != null && opts.DerivedKey != null && opts.Context != null)
             {
                 PRTCookie = Helper.createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
-               
             }
             else if (opts.PRT != null & opts.SessionKey != null)
             {
