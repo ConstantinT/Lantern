@@ -1,6 +1,7 @@
 ﻿using JWT;
 using JWT.Algorithms;
 using JWT.Serializers;
+using Lantern.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -98,7 +99,7 @@ namespace Lantern
 
         }
 
-        public static string addNewDeviceToAzure(string proxy, string accesstoken, string certificaterequest, string transportKey, string targetDomain, string deviceDisplayName, bool registerDevice)
+        public static DeviceEnrollmentResp addNewDeviceToAzure(string proxy, string accesstoken, string certificaterequest, string transportKey, string targetDomain, string deviceDisplayName, bool registerDevice)
         {
             using(var client = getDefaultClient(proxy, false, "https://enterpriseregistration.windows.net"))
             using (var message = new HttpRequestMessage(HttpMethod.Post, "/EnrollmentServer/device/?api-version=1.0"))
@@ -113,35 +114,38 @@ namespace Lantern
                     jointype = 4;
                 }
 
-                Dictionary<string, object> body = new Dictionary<string, object>
+                var body = new DeviceEnrollmentReq
                 {
-                    { "TransportKey", transportKey },
-                    { "JoinType", jointype },
-                    { "DeviceDisplayName", deviceDisplayName },
-                    {  "OSVersion", "10.0.19041.804" },
-                    { "CertificateRequest" , new Dictionary<string,string>{
-                        {"Type", "pkcs10" },
-                        {"Data", certificaterequest }
-                    }},
-                    { "TargetDomain", targetDomain },
-                    { "DeviceType", "Windows" },
-                    { "Attributes" , new Dictionary<string,bool>{
-                        {"ReuseDevice", true },
-                        {"ReturnClientSid", true },
-                        {"SharedDevice", false }
-                    }},
-
+                    TransportKey = transportKey,
+                    JoinType = jointype,
+                    DeviceDisplayName = deviceDisplayName,
+                    OSVersion = "10.0.19041.804",
+                    CertificateRequest = new Certificaterequest
+                    {
+                        Data = certificaterequest,
+                        Type = "pkcs10"
+                    },
+                    TargetDomain = targetDomain,
+                    DeviceType = "Windows",
+                    Attributes = new Attributes
+                    {
+                        ReturnClientSid = "true",
+                        ReuseDevice = "true",
+                        SharedDevice = "false"
+                    }
                 };
+
                 var content = new StringContent(JsonConvert.SerializeObject(body, Formatting.Indented));
                 message.Content = content;
                 var response = client.SendAsync(message).Result;
                 if (response.IsSuccessStatusCode)
                 {
                     var result = response.Content.ReadAsStringAsync().Result;
-                    return result;
+                    var devEnrollmentResp = JsonConvert.DeserializeObject<DeviceEnrollmentResp>(result);
+                    return devEnrollmentResp;
                 }
             }
-            return "";
+            return null;
         }
 
         public static string postToTokenEndpoint(FormUrlEncodedContent formContent, string proxy, string tenant = null)

@@ -366,6 +366,16 @@ namespace Lantern
                     return 1;
                 }
                 JToken parsedInitToken = JToken.Parse(initTokens);
+                if (parsedInitToken["error"] != null)
+                {
+                    Console.WriteLine("Something went wrong...");
+                    Console.WriteLine("");
+                    var beautified = parsedInitToken.ToString(Formatting.Indented);
+                    Console.WriteLine(beautified);
+                    Console.WriteLine("");
+                    Console.WriteLine("Exiting...");
+                    return 1;
+                }
                 String initAccesstoken = decoder.Decode(parsedInitToken["access_token"].ToString());
                 String refreshtoken = parsedInitToken["refresh_token"].ToString();
                 var parsedInitAccessToken = JToken.Parse(initAccesstoken);
@@ -387,9 +397,8 @@ namespace Lantern
                 CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
                 var crs = Convert.ToBase64String(req.CreateSigningRequest());
                 var transportKey = Convert.ToBase64String(rsa.Key.Export(CngKeyBlobFormat.GenericPublicBlob));
-                string responseJoinDevice = Helper.addNewDeviceToAzure(opts.Proxy, accesstoken, crs, transportKey, upn.Split("@")[1], opts.DeviceName, opts.RegisterDevice);
-                JToken parsedJoinResponse = JToken.Parse(responseJoinDevice);
-                byte[] binCert = Convert.FromBase64String(parsedJoinResponse["Certificate"]["RawBody"].ToString());
+                var responseJoinDevice = Helper.addNewDeviceToAzure(opts.Proxy, accesstoken, crs, transportKey, upn.Split("@")[1], opts.DeviceName, opts.RegisterDevice)
+                byte[] binCert = Convert.FromBase64String(responseJoinDevice.Certificate.RawBody.ToString());
                 X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.Exportable);
 
                 string deviceId = cert.Subject.Split("=")[1];
@@ -397,8 +406,7 @@ namespace Lantern
                 Console.WriteLine("");
                 Console.WriteLine("The deviceId is: " + deviceId);
                 Console.WriteLine("");
-                var beautified = parsedJoinResponse.ToString(Formatting.Indented);
-                Console.WriteLine(beautified);
+                Console.WriteLine(JToken.FromObject(responseJoinDevice).ToString(Formatting.Indented));
                 Console.WriteLine("");
                 
                 // https://github.com/dotnet/runtime/issues/19581
