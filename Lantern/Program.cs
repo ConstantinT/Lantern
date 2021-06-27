@@ -79,10 +79,10 @@ namespace Lantern
         {
             String result = null;
             RSA rsa;
-            if (opts.PRT != null && opts.Context != null && opts.DerivedKey != null && opts.Tenant != null)
+            if (opts.PRT != null && opts.Context != null && opts.DerivedKey != null && opts.Tenant != null && opts.UserName != null)
             {
                 rsa = new RSACng(2048);
-                string CN = "CN=";
+                string CN = "CN=" + opts.UserName;
                 CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
                 var csr = Convert.ToBase64String(req.CreateSigningRequest());
                 string nonce = Helper.getNonce2(opts.Proxy);
@@ -99,6 +99,7 @@ namespace Lantern
                 Dictionary<string, object> payload = new Dictionary<string, object>
                 {
                     { "iss", "aad:brokerplugin" },
+                    { "aud", "login.microsoftonline.com" },
                     { "grant_type", "refresh_token" },
                     { "request_nonce", nonce },
                     { "scope", "openid aza ugs" },
@@ -165,7 +166,7 @@ namespace Lantern
             }
             else 
             {
-                Console.WriteLine("Use --prt --derivedkey --context --tennant or with --pfxpath --tenant --devicename.... Other methods are not implemented yet...");
+                Console.WriteLine("Use --prt --derivedkey --context --tenant --username or with --pfxpath --tenant --devicename.... Other methods are not implemented yet...");
                 return 1;
             }
 
@@ -180,7 +181,7 @@ namespace Lantern
                 deviceId = deviceId.Split(",")[0];
                 var keyPair = cert.CopyWithPrivateKey(rsa);
                 byte[] certData = keyPair.Export(X509ContentType.Pfx, "");
-                File.WriteAllBytes(deviceId + ".pfx", certData);
+                File.WriteAllBytes(deviceId + "-P2P.pfx", certData);
 
                 String certHeader = "-----BEGIN PUBLIC KEY-----\n";
                 String certend = "\n-----END PUBLIC KEY-----";
@@ -192,7 +193,7 @@ namespace Lantern
                 Console.WriteLine(" Subject: " + cert.Subject);
                 Console.WriteLine(" Issuer: " + cert.Issuer);
                 Console.WriteLine(" CA file name: " + deviceId + "-P2P-CA.der");
-                Console.WriteLine(" PFX file name: " + deviceId + ".pfx");
+                Console.WriteLine(" PFX file name: " + deviceId + "-P2P.pfx");
                 return 0;
             } 
             return 1;
@@ -391,7 +392,6 @@ namespace Lantern
             {
 
                 // https://github.com/Gerenios/AADInternals/blob/23831d5af045eeaa199ab098d29df9d4a60f460e/PRT_Utils.ps1#L95
-                //RSACng rsa = (RSACng)RSA.Create(2048);
                 RSACng rsa = new RSACng(2048);
                 string CN = "CN=7E980AD9-B86D-4306-9425-9AC066FB014A";
                 CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);

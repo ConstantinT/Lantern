@@ -176,8 +176,7 @@ namespace Lantern
             var formContent = new FormUrlEncodedContent(new[]
                 {
                 new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
-                new KeyValuePair<string, string>("request", JWT),
-                new KeyValuePair<string, string>("windows_api_version", "2.0")
+                new KeyValuePair<string, string>("request", JWT)
                 });
 
             return postToTokenEndpoint(formContent, proxy, tenant);
