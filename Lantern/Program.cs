@@ -497,8 +497,11 @@ namespace Lantern
                     case "Intune":
                         result = Tokenator.getToken(opts, AzClientIDEnum.Intune, AzResourceEnum.Intune);
                         break;
+                    case "Windows":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.WindowsClient, AzResourceEnum.WindowsClient);
+                        break;
                     default:
-                        Console.WriteLine("[-] Please choose Outlook, Substrate, Teams, Graph, MSGraph, Webshell, Core, Office or Intune");
+                        Console.WriteLine("[-] Please choose Outlook, Substrate, Teams, Graph, MSGraph, Webshell, Core, Office, Intune or WinClient");
                         return 1;
                 }
             }

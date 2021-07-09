@@ -16,5 +16,6 @@ namespace Lantern
         public const string Core = "https://management.core.windows.net";
         public const string OfficeApps = "https://officeapps.live.com";
         public const string Intune = "https://intunemam.microsoftonline.com";
+        public const string WindowsClient = "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9";
     }
 }

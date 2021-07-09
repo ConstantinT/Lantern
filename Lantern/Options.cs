@@ -126,7 +126,7 @@ namespace Lantern
         [Option(HelpText = "Set resource ID for access token, for example for Device Management (01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9)", Default = "https://graph.windows.net")]
         public string ResourceID { get; set; }
 
-        [Option(HelpText = "Set a client used for token request, you can choose between: Outlook, Substrate, Teams, Graph, MSGraph, Webshell, Core, Office or Intune. Or you can set custom values with --clientid and --resourceid")]
+        [Option(HelpText = "Set a client used for token request, you can choose between: Outlook, Substrate, Teams, Graph, MSGraph, Webshell, Core, Office, Intune or Windows. Or you can set custom values with --clientid and --resourceid")]
         public string ClientName { get; set; }
 
     }
@@ -143,7 +143,7 @@ namespace Lantern
         [Option(HelpText = "Set this, if you want only register the device", Default = false)]
         public bool RegisterDevice { get; set; }
 
-        [Option(HelpText = "Set access token - use token with --clientid 01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9")]
+        [Option(HelpText = "Set access token - use token with --clientid 01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9 and --resourceid 01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9 or --clientname Windows")]
         public string AccessToken { get; set; }
 
         [Option(HelpText = "Set Tenant")]
