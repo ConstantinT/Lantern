@@ -14,5 +14,7 @@ namespace Lantern
         public const string MSGraph = "https://graph.microsoft.com";
         public const string WebShell = "https://webshell.suite.office.com";
         public const string Core = "https://management.core.windows.net";
+        public const string OfficeApps = "https://officeapps.live.com";
+        public const string Intune = "https://intunemam.microsoftonline.com";
     }
 }

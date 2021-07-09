@@ -16,5 +16,7 @@ namespace Lantern
         public const string WebShell = "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7";
         public const string Core = "d3590ed6-52b3-4102-aeff-aad2292ab01c";
         public const string WindowsClient = "38aa3b87-a06d-4817-b275-7a316988d93b";
+        public const string OfficeApps = "ab9b8c07-8f02-4f72-87fa-80105867a763";
+        public const string Intune = "6c7e8096-f593-4d72-807f-a5f86dcc9c77";
     }
 }

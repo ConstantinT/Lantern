@@ -126,7 +126,7 @@ namespace Lantern
         [Option(HelpText = "Set resource ID for access token, for example for Device Management (01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9)", Default = "https://graph.windows.net")]
         public string ResourceID { get; set; }
 
-        [Option(HelpText = "Set a client used for token request, you can choose between: Outlook, Substrate, Teams, Graph, MSGraph, Webshell or Core. Or you can set custom values with --clientid and --resourceid")]
+        [Option(HelpText = "Set a client used for token request, you can choose between: Outlook, Substrate, Teams, Graph, MSGraph, Webshell, Core, Office or Intune. Or you can set custom values with --clientid and --resourceid")]
         public string ClientName { get; set; }
 
     }
