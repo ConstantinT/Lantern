@@ -42,26 +42,24 @@ namespace Lantern
                 var response = client.SendAsync(message).Result;
                 if (response.StatusCode.Equals("200"))
                 {
-                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
+                    Console.WriteLine("[-] Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
                     return null;
                 }
-
                 string location = "";
-
                 if (response.Headers.Contains("Location"))
                 {
                     location = response.Headers.Location.ToString();
                 }
                 else
                 {
-                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
+                    Console.WriteLine("[-] Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
                     return "";
                 }
 
                 int startOf = location.IndexOf("code=");
                 if (startOf == -1)
                 {
-                    Console.WriteLine("Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
+                    Console.WriteLine("[-] Something went wrong, cannot fetch code with PRT cookie, maybe Conditional Access Policy blocks.");
                     return null;
                 }
                 int endOf = location.IndexOf("&", startOf + 5);
@@ -99,54 +97,7 @@ namespace Lantern
 
         }
 
-        public static DeviceEnrollmentResp addNewDeviceToAzure(string proxy, string accesstoken, string certificaterequest, string transportKey, string targetDomain, string deviceDisplayName, bool registerDevice)
-        {
-            using(var client = getDefaultClient(proxy, false, "https://enterpriseregistration.windows.net"))
-            using (var message = new HttpRequestMessage(HttpMethod.Post, "/EnrollmentServer/device/?api-version=1.0"))
-            {
-                //message.Headers.Add("Authorization", "Bearer " + accesstoken);
-                message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accesstoken);
-                message.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=utf-8");
-
-                int jointype = 0;
-                if (registerDevice)
-                {
-                    jointype = 4;
-                }
-
-                var body = new DeviceEnrollmentReq
-                {
-                    TransportKey = transportKey,
-                    JoinType = jointype,
-                    DeviceDisplayName = deviceDisplayName,
-                    OSVersion = "10.0.19041.804",
-                    CertificateRequest = new Certificaterequest
-                    {
-                        Data = certificaterequest,
-                        Type = "pkcs10"
-                    },
-                    TargetDomain = targetDomain,
-                    DeviceType = "Windows",
-                    Attributes = new Attributes
-                    {
-                        ReturnClientSid = "true",
-                        ReuseDevice = "true",
-                        SharedDevice = "false"
-                    }
-                };
-
-                var content = new StringContent(JsonConvert.SerializeObject(body, Formatting.Indented));
-                message.Content = content;
-                var response = client.SendAsync(message).Result;
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = response.Content.ReadAsStringAsync().Result;
-                    var devEnrollmentResp = JsonConvert.DeserializeObject<DeviceEnrollmentResp>(result);
-                    return devEnrollmentResp;
-                }
-            }
-            return null;
-        }
+        
 
  
 

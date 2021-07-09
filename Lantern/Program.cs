@@ -307,7 +307,7 @@ namespace Lantern
                 }else
                 {
                     Console.WriteLine();
-                    Console.WriteLine("[-] Something completly went wrong... sorry");
+                    Console.WriteLine("[-] Something went completly wrong... sorry");
                     Console.WriteLine();
 
                     return 1;
@@ -316,7 +316,7 @@ namespace Lantern
             else
             {
                 Console.WriteLine();
-                Console.WriteLine("[-] Something completly went wrong... sorry");
+                Console.WriteLine("[-] Something went completly wrong... sorry");
                 Console.WriteLine();
                 return 1;
             }
@@ -383,7 +383,7 @@ namespace Lantern
                 CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
                 var crs = Convert.ToBase64String(req.CreateSigningRequest());
                 var transportKey = Convert.ToBase64String(rsa.Key.Export(CngKeyBlobFormat.GenericPublicBlob));
-                var responseJoinDevice = Helper.addNewDeviceToAzure(opts.Proxy, accesstoken, crs, transportKey, upn.Split("@")[1], opts.DeviceName, opts.RegisterDevice);
+                var responseJoinDevice = MEManager.addNewDeviceToAzure(opts.Proxy, accesstoken, crs, transportKey, upn.Split("@")[1], opts.DeviceName, opts.RegisterDevice);
                 byte[] binCert = Convert.FromBase64String(responseJoinDevice.Certificate.RawBody.ToString());
                 X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.Exportable);
 
@@ -500,8 +500,11 @@ namespace Lantern
                     case "Windows":
                         result = Tokenator.getToken(opts, AzClientIDEnum.WindowsClient, AzResourceEnum.WindowsClient);
                         break;
+                    case "AzureMDM":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.AzureMDM, AzResourceEnum.AzureMDM);
+                        break;
                     default:
-                        Console.WriteLine("[-] Please choose Outlook, Substrate, Teams, Graph, MSGraph, Webshell, Core, Office, Intune or WinClient");
+                        Console.WriteLine("[-] Please choose Outlook, Substrate, Teams, Graph, MSGraph, Webshell, Core, Office, Intune, AzureMDM or WinClient");
                         return 1;
                 }
             }
