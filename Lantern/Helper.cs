@@ -148,103 +148,7 @@ namespace Lantern
             return null;
         }
 
-        public static string postToTokenEndpoint(FormUrlEncodedContent formContent, string proxy, string tenant = null)
-        {
-            string uri = "/common/oauth2/token";
-            if (tenant != null)
-            {
-                uri = "/" + tenant + "/oauth2/token";
-            }
-            using (var message = new HttpRequestMessage(HttpMethod.Post, uri))
-            using (var client = getDefaultClient(proxy, false))
-            {
-                message.Headers.Add("client-request-id", Guid.NewGuid().ToString());
-                message.Headers.Add("return-client-request-id", "true");
-                message.Content = formContent;
-                var response = client.SendAsync(message).Result;
-                //if (response.IsSuccessStatusCode)
-                //{
-                    var result = response.Content.ReadAsStringAsync().Result;
-                    return result;
-                //}
-                //return null;
-            }
-        }
-
-        public static string requestP2PCertificate (string JWT, string tenant, string proxy)
-        {
-            var formContent = new FormUrlEncodedContent(new[]
-                {
-                new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
-                new KeyValuePair<string, string>("request", JWT)
-                });
-
-            return postToTokenEndpoint(formContent, proxy, tenant);
-        }
-
-        public static string authenticateWithClientIDandSecret(string clientID, string clientSecret, string tenant, string proxy, string ressourceId)
-        {
-            var formContent = new FormUrlEncodedContent(new[]
-                {
-                new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("client_id", clientID),
-                new KeyValuePair<string, string>(ressourceId, ressourceId),
-                new KeyValuePair<string, string>("client_secret", clientSecret)
-                });
-            return postToTokenEndpoint(formContent, proxy, tenant);
-        }
-
-        public static string authenticateWithUserNameAndPassword(string username, string password, string proxy, string ressourceId, string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894")
-        {
-            var formContent = new FormUrlEncodedContent(new[]
-                {
-                new KeyValuePair<string, string>("grant_type", "password"),
-                new KeyValuePair<string, string>("scope", "openid"),
-                new KeyValuePair<string, string>("resource", ressourceId),
-                new KeyValuePair<string, string>("client_id", clientID),
-                new KeyValuePair<string, string>("username", username),
-                new KeyValuePair<string, string>("password", password)
-                });
-            return postToTokenEndpoint(formContent, proxy);
-        }
-
-        public static string getAccessTokenWithRefreshtoken(string refreshToken, string ressourceId, string tenant, string proxy, string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894")
-        {
-            var formContent = new FormUrlEncodedContent(new[]
-                {
-                new KeyValuePair<string, string>("scope", "openid"),
-                new KeyValuePair<string, string>("grant_type", "refresh_token"),
-                new KeyValuePair<string, string>("client_id", clientID),
-                new KeyValuePair<string, string>("resource", ressourceId),
-                new KeyValuePair<string, string>("refresh_token", refreshToken)
-                });
-            return postToTokenEndpoint(formContent, proxy, tenant);
-        }
-
-        public static string authenticateWithRefreshToken(string token, string proxy, string ressourceId, string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894")
-        {
-            var formContent = new FormUrlEncodedContent(new[]
-                {
-                new KeyValuePair<string, string>("grant_type", "refresh_token"),
-                new KeyValuePair<string, string>("resource", ressourceId),
-                new KeyValuePair<string, string>("client_id", clientID),
-                new KeyValuePair<string, string>("refresh_token", token),
-                });
-            return postToTokenEndpoint(formContent, proxy);
-        }
-        public static string authenticateWithCode(string code, string proxy, string ressourceId = "https://graph.windows.net", string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894")
-        {
-            var formContent = new FormUrlEncodedContent(new[]
-                {
-                new KeyValuePair<string, string>("grant_type", "authorization_code"),
-                new KeyValuePair<string, string>("resource", ressourceId),
-                new KeyValuePair<string, string>("client_id", clientID),
-                new KeyValuePair<string, string>("redirect_uri", "urn:ietf:wg:oauth:2.0:oob"),
-                new KeyValuePair<string, string>("code", code)
-                });
-
-            return postToTokenEndpoint(formContent, proxy);
-        }
+ 
 
         // https://stackoverflow.com/questions/1459006/is-there-a-c-sharp-equivalent-to-pythons-unhexlify
         public static byte[] Hex2Binary(string hex)
@@ -356,22 +260,6 @@ namespace Lantern
         {
             using (var client = getDefaultClient(proxy))
             {
-                // Original from auth.py
-                //String uri = string.Format(@"/Common/oauth2/authorize?resource={0}&client_id={1}&response_type={2}&haschrome={3}&redirect_uri={4}&client-request-id={5}&x-client-SKU={6}&x-client-Ver={7}&x-client-CPU={8}&x-client-OS={9}&site_id={10}&mscrid={11}",
-                //    "https://graph.windows.net/",
-                //    "1b730954-1685-4b74-9bfd-dac224a7b894",
-                //    "code",
-                //    "1",
-                //    "urn:ietf:wg:oauth:2.0:oob",
-                //    Guid.NewGuid(),
-                //    "PCL.Desktop",
-                //    "3.19.7.16602",
-                //    "x64",
-                //    "Microsoft Windows NT 10.0.19569.0",
-                //    "501358",
-                //    Guid.NewGuid());
-
-
                 String uri = string.Format(@"/Common/oauth2/authorize?client_id={0}", "1b730954-1685-4b74-9bfd-dac224a7b894");
                 var response = client.GetAsync(uri).Result;
                 var responseContent = response.Content;
@@ -382,6 +270,25 @@ namespace Lantern
                 string nonce = responseString.Substring(startOf + 9, len - 9);
                 client.Dispose();
                 return nonce;
+            }
+        }
+
+        public static string postToTokenEndpoint(FormUrlEncodedContent formContent, string proxy, string tenant = null)
+        {
+            string uri = "/common/oauth2/token";
+            if (tenant != null)
+            {
+                uri = "/" + tenant + "/oauth2/token";
+            }
+            using (var message = new HttpRequestMessage(HttpMethod.Post, uri))
+            using (var client = Helper.getDefaultClient(proxy, false))
+            {
+                message.Headers.Add("client-request-id", Guid.NewGuid().ToString());
+                message.Headers.Add("return-client-request-id", "true");
+                message.Content = formContent;
+                var response = client.SendAsync(message).Result;
+                var result = response.Content.ReadAsStringAsync().Result;
+                return result;
             }
         }
 
@@ -461,62 +368,6 @@ namespace Lantern
         public static String ToBinary(Byte[] data)
         {
             return string.Join(" ", data.Select(byt => Convert.ToString(byt, 2).PadLeft(8, '0')));
-        }
-
-        public static string getToken(TokenOptions opts, string resourceID = "https://graph.windows.net", string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894")
-        {
-            string result = null;
-            if (opts.PRT != null & opts.DerivedKey != null & opts.Context != null)
-            {
-                string prtCookie = createPRTCookie(opts.PRT, opts.Context, opts.DerivedKey, opts.Proxy);
-                string code = getCodeFromPRTCookie(prtCookie, opts.Proxy, resourceID, clientID);
-                result = authenticateWithCode(code, opts.Proxy, resourceID, clientID);
-            }
-            else if (opts.PRT != null & opts.SessionKey != null)
-            {
-                var context = GetByteArray(24);
-                var decodedKey = Base64Decode(opts.SessionKey);
-                var derivedKey = createDerivedKey(decodedKey, context);
-
-                var contextHex = Binary2Hex(context);
-                var derivedSessionKeyHex = Binary2Hex(derivedKey);
-
-                string prtCookie = createPRTCookie(opts.PRT, contextHex, derivedSessionKeyHex, opts.Proxy);
-                string code = getCodeFromPRTCookie(prtCookie, opts.Proxy, resourceID, clientID);
-                result = authenticateWithCode(code, opts.Proxy, resourceID, clientID);
-            }
-            else if (opts.PrtCookie != null)
-            {
-                string code = getCodeFromPRTCookie(opts.PrtCookie, opts.Proxy, resourceID, clientID);
-                result = authenticateWithCode(code, opts.Proxy, resourceID, clientID);
-            }
-            else if (opts.RefreshToken != null)
-            {
-                result = authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy, opts.ResourceID);
-            }
-            else if (opts.UserName != null & opts.Password != null)
-            {
-                if (resourceID != null)
-                {
-                    result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy, resourceID, clientID);
-                }
-                else
-                {
-                    result = authenticateWithUserNameAndPassword(opts.UserName, opts.Password, opts.Proxy, opts.ResourceID, opts.ClientID);
-                }
-                
-            }
-            else if (opts.Tenant != null & opts.ClientID != null & opts.ClientSecret != null)
-            {
-                result = authenticateWithClientIDandSecret(opts.ClientID, opts.ClientSecret, opts.Tenant, opts.Proxy, opts.ResourceID);
-            }
-            else
-            {
-                Console.WriteLine("Please set the corect arguments.");
-                return null;
-            }
-            return result;
-
         }
     }
 }

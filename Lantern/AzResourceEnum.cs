@@ -6,10 +6,13 @@ namespace Lantern
 {
     public static class AzResourceEnum
     {
-        public const string Default = "https://graph.windows.net";
-        public const string DeviceMgmtClientID = "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9";
-        public const string MDMResource = "https://enrollment.manage.microsoft.com";
-        public const string GraphApiClientID = "1b730954-1685-4b74-9bfd-dac224a7b894";
-        public const string AzureMDMClientID = "29d9ed98-a469-4536-ade2-f981bc1d605e";
+        public const string GraphAPI = "https://graph.windows.net";
+        public const string AzureMDM = "https://enrollment.manage.microsoft.com";
+        public const string Outlook = "https://outlook.office365.com";
+        public const string Substrate = "https://substrate.office.com";
+        public const string Teams = "https://api.spaces.skype.com";
+        public const string MSGraph = "https://graph.microsoft.com";
+        public const string WebShell = "https://webshell.suite.office.com";
+        public const string Core = "https://management.core.windows.net";
     }
 }

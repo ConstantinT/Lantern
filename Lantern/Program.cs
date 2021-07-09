@@ -1,17 +1,12 @@
 ﻿using CommandLine;
 using CommandLine.Text;
 using JWT;
-using JWT.Algorithms;
-using JWT.Builder;
 using JWT.Serializers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -63,16 +58,6 @@ namespace Lantern
                     (TokenOptions options) => RunToken(options),
                     errs => DisplayHelp(parserResult)
             );
-
-            
-            //Parser.Default.ParseArguments<NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args)
-            //.MapResult(
-            //    (DeviceKeyOptions options) => RunDeviceKeys(options),
-            //    (DeviceOptions options) => JoinDevice(options),
-            //    (NonceOptions options) => RunNonce(options),
-            //    (CookieOptions options) => RunCookie(options),
-            //    (TokenOptions options) => RunToken(options),
-            //    errors => Error());
         }
 
         private static int RunP2PAction(P2POptions opts)
@@ -104,14 +89,14 @@ namespace Lantern
                     { "request_nonce", nonce },
                     { "scope", "openid aza ugs" },
                     { "refresh_token", prtdecoded },
-                    { "client_id", "38aa3b87-a06d-4817-b275-7a316988d93b" },
+                    { "client_id", AzClientIDEnum.WindowsClient },
                     { "cert_token_use", "user_cert" },
                     { "csr_type", "http://schemas.microsoft.com/windows/pki/2009/01/enrollment#PKCS10" },
                     { "csr", csr }
                 };
 
                 var JWT = Helper.signJWT(headerRaw, payload, opts.DerivedKey);
-                result = Helper.requestP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+                result = Tokenator.getP2PCertificate(JWT, opts.Tenant, opts.Proxy);
                 
             }
             else if (opts.PFXPath != null && opts.Tenant != null && opts.DeviceName != null)
@@ -145,7 +130,7 @@ namespace Lantern
                         { "win_ver", "10.0.18363.0" },
                         { "grant_type", "device_auth" },
                         { "cert_token_use", "device_cert" },
-                        { "client_id", "38aa3b87-a06d-4817-b275-7a316988d93b" },
+                        { "client_id", AzClientIDEnum.WindowsClient },
                         { "csr_type", "http://schemas.microsoft.com/windows/pki/2009/01/enrollment#PKCS10" },
                         { "csr",  csr },
                         { "netbios_name", "JuniTest" },
@@ -162,11 +147,11 @@ namespace Lantern
 
                 var JWT = header + "." + payload + "." + signatureb64;
 
-                result = Helper.requestP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+                result = Tokenator.getP2PCertificate(JWT, opts.Tenant, opts.Proxy);
             }
             else 
             {
-                Console.WriteLine("Use --prt --derivedkey --context --tenant --username or with --pfxpath --tenant --devicename.... Other methods are not implemented yet...");
+                Console.WriteLine("[-] Use --prt --derivedkey --context --tenant --username or with --pfxpath --tenant --devicename.... Other methods are not implemented yet...");
                 return 1;
             }
 
@@ -190,10 +175,10 @@ namespace Lantern
                 File.WriteAllText(deviceId + "-P2P-CA.der", caCert);
 
                 Console.WriteLine();
-                Console.WriteLine(" Subject: " + cert.Subject);
-                Console.WriteLine(" Issuer: " + cert.Issuer);
-                Console.WriteLine(" CA file name: " + deviceId + "-P2P-CA.der");
-                Console.WriteLine(" PFX file name: " + deviceId + "-P2P.pfx");
+                Console.WriteLine("[+] Subject: " + cert.Subject);
+                Console.WriteLine("[+] Issuer: " + cert.Issuer);
+                Console.WriteLine("[+] CA file name: " + deviceId + "-P2P-CA.der");
+                Console.WriteLine("[+] PFX file name: " + deviceId + "-P2P.pfx");
                 return 0;
             } 
             return 1;
@@ -208,30 +193,35 @@ namespace Lantern
             var decoder = new JwtDecoder(serializer, urlEncoder);
             if (opts.RefreshToken != null)
             {
-                string initToken = Helper.authenticateWithRefreshToken(opts.RefreshToken, opts.Proxy, AzResourceEnum.MDMResource, AzResourceEnum.AzureMDMClientID);
+                string initToken = Tokenator.GetTokenFromRefreshToken(opts.RefreshToken, opts.Proxy, AzClientIDEnum.AzureMDM, AzResourceEnum.AzureMDM);
                 string checkAccessToken = JToken.Parse(initToken)["access_token"].ToString();
                 string decodedaccesstoken = decoder.Decode(checkAccessToken);
                 JToken parsedAccessToken = JToken.Parse(decodedaccesstoken);
                 String aud = parsedAccessToken["aud"].ToString();
                 tenantId = parsedAccessToken["tid"].ToString();
-                if (aud != AzResourceEnum.MDMResource)
+                if (aud != AzResourceEnum.AzureMDM)
                 {
-                    Console.WriteLine("AccessToken does not contain correct Audience...");
+                    Console.WriteLine("[-] AccessToken does not contain correct Audience...");
                     return 1;
                 }
                 refreshtoken = opts.RefreshToken;
             }
-            else
+            else if (opts.UserName != null && opts.Password != null)
             {
-                String initTokens = Helper.getToken(opts, AzResourceEnum.MDMResource, AzResourceEnum.AzureMDMClientID);
+                String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Proxy, AzClientIDEnum.AzureMDM, AzResourceEnum.AzureMDM);
                 if (initTokens == null)
                 {
-                    Console.WriteLine("Authentication failed... ");
+                    Console.WriteLine("[-] Authentication failed. Please check used credentials!");
                     return 1;
                 }
                 JToken parsedInitToken = JToken.Parse(initTokens);
                 tenantId = Helper.getTenantFromAccessToken(parsedInitToken["access_token"].ToString());
                 refreshtoken = parsedInitToken["refresh_token"].ToString();               
+            } else
+            {
+                Console.WriteLine("[-] For this you need a username and a password");
+                Console.WriteLine("");
+                return 1;
             }
 
             if (refreshtoken != null && tenantId != null)
@@ -259,7 +249,7 @@ namespace Lantern
                         { "win_ver", "10.0.18363.0" },
                         { "grant_type", "refresh_token" },
                         { "refresh_token", refreshtoken },
-                        { "client_id", "29d9ed98-a469-4536-ade2-f981bc1d605e" }
+                        { "client_id", AzClientIDEnum.AzureMDM }
 
                     };
 
@@ -295,11 +285,11 @@ namespace Lantern
                     string decryptionKey = Convert.ToBase64String(dekey);
 
                     Console.WriteLine();
-                    Console.WriteLine("Here is your PRT:");
+                    Console.WriteLine("[+] Here is your PRT:");
                     Console.WriteLine();
                     Console.WriteLine(Convert.ToBase64String(Encoding.ASCII.GetBytes(PRT)));
                     Console.WriteLine();
-                    Console.WriteLine("Here is your session key:");
+                    Console.WriteLine("[+] Here is your session key:");
                     Console.WriteLine();
                     Console.WriteLine(decryptionKey);
                     Console.WriteLine("");
@@ -309,26 +299,25 @@ namespace Lantern
                 else if (parsedResult["error_description"] != null)
                 {
                     Console.WriteLine();
-                    Console.WriteLine("Something went wrong:");
+                    Console.WriteLine("[-] Something went wrong:");
                     Console.WriteLine();
                     Console.WriteLine(parsedResult["error_description"].ToString());
                     Console.WriteLine("");
-
                     return 1;
                 }else
                 {
                     Console.WriteLine();
-                    Console.WriteLine("Something completly went wrong... sorry");
+                    Console.WriteLine("[-] Something completly went wrong... sorry");
                     Console.WriteLine();
 
                     return 1;
-                }
-                
+                }          
             }
             else
             {
-                Console.WriteLine("For this you need a username and a password");
-                Console.WriteLine("");
+                Console.WriteLine();
+                Console.WriteLine("[-] Something completly went wrong... sorry");
+                Console.WriteLine();
                 return 1;
             }
         }
@@ -349,32 +338,30 @@ namespace Lantern
                 String aud = parsedAccessToken["aud"].ToString();
                 tenantId = parsedAccessToken["tid"].ToString();
                 upn = parsedAccessToken["upn"].ToString();
-                if (aud != AzResourceEnum.DeviceMgmtClientID)
+                if (aud != AzClientIDEnum.DeviceMgmt)
                 {
                     Console.WriteLine("AccessToken does not contain correct Audience...");
                     return 1;
                 }
-
                 accesstoken = opts.AccessToken;
-
             }
             else
             {
-                String initTokens = Helper.getToken(opts);
+                String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Proxy);
                 if (initTokens == null)
                 {
-                    Console.WriteLine("Authentication failed... ");
+                    Console.WriteLine("[-] Authentication failed! ");
                     return 1;
                 }
                 JToken parsedInitToken = JToken.Parse(initTokens);
                 if (parsedInitToken["error"] != null)
                 {
-                    Console.WriteLine("Something went wrong...");
+                    Console.WriteLine("[-] Something went wrong!");
                     Console.WriteLine("");
                     var beautified = parsedInitToken.ToString(Formatting.Indented);
                     Console.WriteLine(beautified);
                     Console.WriteLine("");
-                    Console.WriteLine("Exiting...");
+                    Console.WriteLine("[-] Good bye!");
                     return 1;
                 }
                 String initAccesstoken = decoder.Decode(parsedInitToken["access_token"].ToString());
@@ -382,11 +369,10 @@ namespace Lantern
                 var parsedInitAccessToken = JToken.Parse(initAccesstoken);
                 tenantId = parsedInitAccessToken["tid"].ToString();
                 upn = parsedInitAccessToken["upn"].ToString();
-                string tokenForDevMgmt = Helper.getAccessTokenWithRefreshtoken(refreshtoken, "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9", tenantId, opts.Proxy);
+                // Resource ID must have the value 01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9
+                string tokenForDevMgmt = Tokenator.GetTokenFromRefreshTokenToTenant(refreshtoken, tenantId, opts.Proxy, resourceID: "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9");
                 JToken parsedTokenForDevMgmt = JToken.Parse(tokenForDevMgmt);
                 accesstoken = parsedTokenForDevMgmt["access_token"].ToString();
-
-
             }
             if (accesstoken != null && upn != null && tenantId != null)
             {
@@ -402,9 +388,9 @@ namespace Lantern
                 X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.Exportable);
 
                 string deviceId = cert.Subject.Split("=")[1];
-                Console.WriteLine("Device successfull added to Azure");
+                Console.WriteLine("[+]Device successfull added to Azure");
                 Console.WriteLine("");
-                Console.WriteLine("The deviceId is: " + deviceId);
+                Console.WriteLine("[+] The deviceId is: " + deviceId);
                 Console.WriteLine("");
                 Console.WriteLine(JToken.FromObject(responseJoinDevice).ToString(Formatting.Indented));
                 Console.WriteLine("");
@@ -465,12 +451,12 @@ namespace Lantern
                 return 1;
             }
 
-            Console.WriteLine("Here is your PRT-Cookie:");
+            Console.WriteLine("[+] Here is your PRT-Cookie:");
             Console.WriteLine("");
             Console.WriteLine(PRTCookie);
             Console.WriteLine("");
-            Console.WriteLine("You can use it with this tool or add it to a browser.");
-            Console.WriteLine("Set as cookie \"x-ms-RefreshTokenCredential\" with HTTPOnly flag");
+            Console.WriteLine("[+] You can use it with this tool or add it to a browser.");
+            Console.WriteLine("[+] Set as cookie \"x-ms-RefreshTokenCredential\" with HTTPOnly flag");
             Console.WriteLine("");
 
             return 0;
@@ -478,8 +464,38 @@ namespace Lantern
 
         static int RunToken(TokenOptions opts)
         {
-
-            String result = Helper.getToken(opts, opts.ResourceID, opts.ClientID);
+            String result = null;
+            if (opts.ClientName == null) { 
+                result = Tokenator.getToken(opts, opts.ClientID, opts.ResourceID);
+            } else{
+                switch (opts.ClientName)
+                {
+                    case "Outlook":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.Outlook, AzResourceEnum.Outlook);
+                        break;
+                    case "Substrate":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.Substrate, AzResourceEnum.Substrate);
+                        break;
+                    case "Teams":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.Teams, AzResourceEnum.Teams);
+                        break;
+                    case "Graph":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.GraphAPI, AzResourceEnum.GraphAPI);
+                        break;
+                    case "MSGraph":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.MSGraph, AzResourceEnum.MSGraph);
+                        break;
+                    case "Webshell":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.WebShell, AzResourceEnum.WebShell);
+                        break;
+                    case "Core":
+                        result = Tokenator.getToken(opts, AzClientIDEnum.Core, AzResourceEnum.Core);
+                        break;
+                    default:
+                        Console.WriteLine("[-] Please choose Outlook, Substrate, Teams, Graph, MSGraph, Webshell or Core");
+                        return 1;
+                }
+            }
             if (result != null)
             {
                 var serializer = new JsonNetSerializer();
@@ -489,7 +505,7 @@ namespace Lantern
 
                 if (parsedJson["error"] != null)
                 {
-                    Console.WriteLine("Something went wrong");
+                    Console.WriteLine("[-] Something went wrong!");
                     Console.WriteLine("");
                     
                     Console.WriteLine(parsedJson["error_description"].ToString());
@@ -504,7 +520,7 @@ namespace Lantern
                     parsedJson["id_token"] = parsedIDToken;
                 }
 
-                Console.WriteLine("Here is your token:");
+                Console.WriteLine("[+] Here is your token:");
                 Console.WriteLine("");
                 var beautified = parsedJson.ToString(Formatting.Indented);
                 Console.WriteLine(beautified);
