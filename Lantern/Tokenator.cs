@@ -32,7 +32,7 @@ namespace Lantern
             return Helper.postToTokenEndpoint(formContent, proxy, tenant);
         }
 
-        private static string authenticateWithUserNameAndPassword(string username, string password, string proxy, string clientID, string ressourceId)
+        private static string authenticateWithUserNameAndPassword(string username, string password, string tenant, string proxy, string clientID, string ressourceId)
         {
             var formContent = new FormUrlEncodedContent(new[]
                 {
@@ -43,7 +43,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("username", username),
                 new KeyValuePair<string, string>("password", password)
                 });
-            return Helper.postToTokenEndpoint(formContent, proxy);
+            return Helper.postToTokenEndpoint(formContent, proxy, tenant);
         }
 
         private static string authenticateWithRefreshTokenToTenant(string refreshToken, string tenant, string proxy, string clientID, string ressourceId)
@@ -59,14 +59,15 @@ namespace Lantern
             return Helper.postToTokenEndpoint(formContent, proxy, tenant);
         }
 
-        private static string authenticateWithRefreshToken(string token, string proxy, string clientID, string ressourceId)
+        private static string authenticateWithRefreshToken(string refreshToken, string proxy, string clientID, string ressourceId)
         {
             var formContent = new FormUrlEncodedContent(new[]
                 {
+                new KeyValuePair<string, string>("scope", "openid"),
                 new KeyValuePair<string, string>("grant_type", "refresh_token"),
                 new KeyValuePair<string, string>("resource", ressourceId),
                 new KeyValuePair<string, string>("client_id", clientID),
-                new KeyValuePair<string, string>("refresh_token", token),
+                new KeyValuePair<string, string>("refresh_token", refreshToken)
                 });
             return Helper.postToTokenEndpoint(formContent, proxy);
         }
@@ -139,10 +140,10 @@ namespace Lantern
         }
 
 
-        public static string GetTokenFromUsernameAndPassword(string Username, string Password, string Proxy, string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894", string resourceID = "https://graph.windows.net")
+        public static string GetTokenFromUsernameAndPassword(string Username, string Password, string Tenant, string Proxy, string clientID = "1b730954-1685-4b74-9bfd-dac224a7b894", string resourceID = "https://graph.windows.net")
         {
             string result = null;
-            result = authenticateWithUserNameAndPassword(Username, Password, Proxy, clientID, resourceID);
+            result = authenticateWithUserNameAndPassword(Username, Password, Tenant, Proxy, clientID, resourceID);
             return result;
         }
 
@@ -177,11 +178,11 @@ namespace Lantern
             }
             else if (opts.RefreshToken != null)
             {
-                result = GetTokenFromRefreshToken(opts.RefreshToken, opts.Proxy, clientID, resourceID);
+                result = GetTokenFromRefreshTokenToTenant(opts.RefreshToken, opts.Tenant, opts.Proxy, clientID, resourceID);
             }
             else if (opts.UserName != null & opts.Password != null)
             {
-                result = GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Proxy, clientID, resourceID);
+                result = GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Tenant, opts.Proxy, clientID, resourceID);
             }
             else if (opts.Tenant != null & opts.ClientID != null & opts.ClientSecret != null)
             {
@@ -216,7 +217,7 @@ namespace Lantern
             }
             else if (opts.UserName != null & opts.Password != null)
             {
-                result = GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Proxy, opts.ClientID, opts.ResourceID);
+                result = GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Tenant, opts.Proxy, opts.ClientID, opts.ResourceID);
             }
             else if (opts.Tenant != null & opts.ClientID != null & opts.ClientSecret != null)
             {

@@ -208,7 +208,7 @@ namespace Lantern
             }
             else if (opts.UserName != null && opts.Password != null)
             {
-                String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Proxy, AzClientIDEnum.AzureMDM, AzResourceEnum.AzureMDM);
+                String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Tenant, opts.Proxy, AzClientIDEnum.AzureMDM, AzResourceEnum.AzureMDM);
                 if (initTokens == null)
                 {
                     Console.WriteLine("[-] Authentication failed. Please check used credentials!");
@@ -347,7 +347,7 @@ namespace Lantern
             }
             else
             {
-                String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Proxy);
+                String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Tenant, opts.Proxy);
                 if (initTokens == null)
                 {
                     Console.WriteLine("[-] Authentication failed! ");
