@@ -240,11 +240,22 @@ namespace Lantern
             using (var message = new HttpRequestMessage(HttpMethod.Get, uri))
             using (var client = Helper.getDefaultClient(proxy, false))
             {
-                //message.Headers.Add("client-request-id", Guid.NewGuid().ToString());
-                //message.Headers.Add("return-client-request-id", "true");
                 var response = client.SendAsync(message).Result;
                 var result = response.Content.ReadAsStringAsync().Result;
                 return result;
+            }
+        }
+
+        public static int PatchRequest(string uri, string accesstoken, string proxy)
+        {
+            using(var content = new StringContent("{}", Encoding.UTF8, "application/json"))
+            using (var message = new HttpRequestMessage(HttpMethod.Patch, uri))
+            using (var client = Helper.getDefaultClient(proxy, false, "https://graph.windows.net"))
+            {
+                message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accesstoken);
+                message.Content = content;
+                var response = client.SendAsync(message).Result;
+                return (int)response.StatusCode;
             }
         }
 

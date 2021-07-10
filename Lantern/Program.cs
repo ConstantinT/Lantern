@@ -52,7 +52,7 @@ namespace Lantern
             return parserResult.MapResult(
                     (P2POptions options) => RunP2PAction(options),
                     (DeviceKeyOptions options) => RunDeviceKeys(options),
-                    (DeviceOptions options) => JoinDevice(options),
+                    (DeviceOptions options) => RunDevice(options),
                     (NonceOptions options) => RunNonce(options),
                     (CookieOptions options) => RunCookie(options),
                     (TokenOptions options) => RunToken(options),
@@ -323,7 +323,7 @@ namespace Lantern
             }
         }
 
-        static int JoinDevice(DeviceOptions opts)
+        static int RunDevice(DeviceOptions opts)
         {
             String accesstoken = null;
             String upn = null;
@@ -331,86 +331,118 @@ namespace Lantern
             var serializer = new JsonNetSerializer();
             var urlEncoder = new JwtBase64UrlEncoder();
             var decoder = new JwtDecoder(serializer, urlEncoder);
-            if (opts.AccessToken != null)
-            {
-                
-                string decodedaccesstoken = decoder.Decode(opts.AccessToken);
-                JToken parsedAccessToken = JToken.Parse(decodedaccesstoken);
-                String aud = parsedAccessToken["aud"].ToString();
-                tenantId = parsedAccessToken["tid"].ToString();
-                upn = parsedAccessToken["upn"].ToString();
-                if (aud != AzClientIDEnum.DeviceMgmt)
+            if (opts.JoinDevice) {
+                if (opts.DeviceName != null)
                 {
-                    Console.WriteLine("AccessToken does not contain correct Audience...");
+                    if (opts.AccessToken != null)
+                    {
+
+                        string decodedaccesstoken = decoder.Decode(opts.AccessToken);
+                        JToken parsedAccessToken = JToken.Parse(decodedaccesstoken);
+                        String aud = parsedAccessToken["aud"].ToString();
+                        tenantId = parsedAccessToken["tid"].ToString();
+                        upn = parsedAccessToken["upn"].ToString();
+                        if (aud != AzClientIDEnum.DeviceMgmt)
+                        {
+                            Console.WriteLine("AccessToken does not contain correct Audience...");
+                            return 1;
+                        }
+                        accesstoken = opts.AccessToken;
+                    }
+                    else
+                    {
+                        String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Tenant, opts.Proxy);
+                        if (initTokens == null)
+                        {
+                            Console.WriteLine("[-] Authentication failed! ");
+                            return 1;
+                        }
+                        JToken parsedInitToken = JToken.Parse(initTokens);
+                        if (parsedInitToken["error"] != null)
+                        {
+                            Console.WriteLine("[-] Something went wrong!");
+                            Console.WriteLine("");
+                            var beautified = parsedInitToken.ToString(Formatting.Indented);
+                            Console.WriteLine(beautified);
+                            Console.WriteLine("");
+                            Console.WriteLine("[-] Good bye!");
+                            return 1;
+                        }
+                        String initAccesstoken = decoder.Decode(parsedInitToken["access_token"].ToString());
+                        String refreshtoken = parsedInitToken["refresh_token"].ToString();
+                        var parsedInitAccessToken = JToken.Parse(initAccesstoken);
+                        tenantId = parsedInitAccessToken["tid"].ToString();
+                        upn = parsedInitAccessToken["upn"].ToString();
+                        // Resource ID must have the value 01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9
+                        string tokenForDevMgmt = Tokenator.GetTokenFromRefreshTokenToTenant(refreshtoken, tenantId, opts.Proxy, resourceID: "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9");
+                        JToken parsedTokenForDevMgmt = JToken.Parse(tokenForDevMgmt);
+                        accesstoken = parsedTokenForDevMgmt["access_token"].ToString();
+                    }
+                    if (accesstoken != null && upn != null && tenantId != null)
+                    {
+
+                        // https://github.com/Gerenios/AADInternals/blob/23831d5af045eeaa199ab098d29df9d4a60f460e/PRT_Utils.ps1#L95
+                        RSACng rsa = new RSACng(2048);
+                        string CN = "CN=7E980AD9-B86D-4306-9425-9AC066FB014A";
+                        CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+                        var crs = Convert.ToBase64String(req.CreateSigningRequest());
+                        var transportKey = Convert.ToBase64String(rsa.Key.Export(CngKeyBlobFormat.GenericPublicBlob));
+                        var responseJoinDevice = MEManager.addNewDeviceToAzure(opts.Proxy, accesstoken, crs, transportKey, upn.Split("@")[1], opts.DeviceName, opts.RegisterDevice);
+                        byte[] binCert = Convert.FromBase64String(responseJoinDevice.Certificate.RawBody.ToString());
+                        X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.Exportable);
+
+                        string deviceId = cert.Subject.Split("=")[1];
+                        Console.WriteLine("[+]Device successfull added to Azure");
+                        Console.WriteLine("");
+                        Console.WriteLine("[+] The deviceId is: " + deviceId);
+                        Console.WriteLine("");
+                        Console.WriteLine(JToken.FromObject(responseJoinDevice).ToString(Formatting.Indented));
+                        Console.WriteLine("");
+
+                        // https://github.com/dotnet/runtime/issues/19581
+                        var keyPair = cert.CopyWithPrivateKey(rsa);
+                        byte[] certData = keyPair.Export(X509ContentType.Pfx, "");
+                        File.WriteAllBytes(deviceId + ".pfx", certData);
+
+                        Console.WriteLine("Device Certificate written to " + deviceId + ".pfx");
+                        Console.WriteLine("");
+                        return 0;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("[-] You must set a device name (--devicename).");
                     return 1;
                 }
-                accesstoken = opts.AccessToken;
-            }
-            else
+            }else if (opts.MarkCompliant)
             {
-                String initTokens = Tokenator.GetTokenFromUsernameAndPassword(opts.UserName, opts.Password, opts.Tenant, opts.Proxy);
-                if (initTokens == null)
+                if (opts.ObjectID != null)
                 {
-                    Console.WriteLine("[-] Authentication failed! ");
+                    if (opts.AccessToken != null)
+                    {
+                        int result = 0;
+                        result = MEManager.MarkDeviceAsCompliant(opts.ObjectID, opts.AccessToken, opts.Proxy);
+                        Console.WriteLine("[+] Responsecode is: " + result.ToString());
+                        return 0;
+                    }
+                    else
+                    {
+                        Console.WriteLine("[-] This is currently only implemented with --accesstoken, get the correct token with --clientname Graph");
+                        return 1;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("[-] You must set an ObjectId id (--objectid)");
                     return 1;
                 }
-                JToken parsedInitToken = JToken.Parse(initTokens);
-                if (parsedInitToken["error"] != null)
-                {
-                    Console.WriteLine("[-] Something went wrong!");
-                    Console.WriteLine("");
-                    var beautified = parsedInitToken.ToString(Formatting.Indented);
-                    Console.WriteLine(beautified);
-                    Console.WriteLine("");
-                    Console.WriteLine("[-] Good bye!");
-                    return 1;
-                }
-                String initAccesstoken = decoder.Decode(parsedInitToken["access_token"].ToString());
-                String refreshtoken = parsedInitToken["refresh_token"].ToString();
-                var parsedInitAccessToken = JToken.Parse(initAccesstoken);
-                tenantId = parsedInitAccessToken["tid"].ToString();
-                upn = parsedInitAccessToken["upn"].ToString();
-                // Resource ID must have the value 01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9
-                string tokenForDevMgmt = Tokenator.GetTokenFromRefreshTokenToTenant(refreshtoken, tenantId, opts.Proxy, resourceID: "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9");
-                JToken parsedTokenForDevMgmt = JToken.Parse(tokenForDevMgmt);
-                accesstoken = parsedTokenForDevMgmt["access_token"].ToString();
-            }
-            if (accesstoken != null && upn != null && tenantId != null)
-            {
-
-                // https://github.com/Gerenios/AADInternals/blob/23831d5af045eeaa199ab098d29df9d4a60f460e/PRT_Utils.ps1#L95
-                RSACng rsa = new RSACng(2048);
-                string CN = "CN=7E980AD9-B86D-4306-9425-9AC066FB014A";
-                CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
-                var crs = Convert.ToBase64String(req.CreateSigningRequest());
-                var transportKey = Convert.ToBase64String(rsa.Key.Export(CngKeyBlobFormat.GenericPublicBlob));
-                var responseJoinDevice = MEManager.addNewDeviceToAzure(opts.Proxy, accesstoken, crs, transportKey, upn.Split("@")[1], opts.DeviceName, opts.RegisterDevice);
-                byte[] binCert = Convert.FromBase64String(responseJoinDevice.Certificate.RawBody.ToString());
-                X509Certificate2 cert = new X509Certificate2(binCert, "", X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.Exportable);
-
-                string deviceId = cert.Subject.Split("=")[1];
-                Console.WriteLine("[+]Device successfull added to Azure");
-                Console.WriteLine("");
-                Console.WriteLine("[+] The deviceId is: " + deviceId);
-                Console.WriteLine("");
-                Console.WriteLine(JToken.FromObject(responseJoinDevice).ToString(Formatting.Indented));
-                Console.WriteLine("");
-                
-                // https://github.com/dotnet/runtime/issues/19581
-                var keyPair = cert.CopyWithPrivateKey(rsa);
-                byte[] certData = keyPair.Export(X509ContentType.Pfx, "");
-                File.WriteAllBytes(deviceId + ".pfx", certData);
-
-                Console.WriteLine("Device Certificate written to " + deviceId + ".pfx");
-                Console.WriteLine("");
-
             }
             else
             {
                 return 1;
             }
 
-            return 0;
+            return 1;
         }
 
         static int Error() {

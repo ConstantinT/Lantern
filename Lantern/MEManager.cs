@@ -58,5 +58,12 @@ namespace Lantern
             }
             return null;
         }
+
+        public static int MarkDeviceAsCompliant(string ObjectID, String accesstoken, String Proxy)
+        {
+            String tenantid = Helper.GetTenantFromAccessToken(accesstoken);
+            String uri = "/" + tenantid + "/devices/" + ObjectID + "?api-version=1.61-internal";
+            return Helper.PatchRequest(uri, accesstoken, Proxy);
+        }
     }
 }

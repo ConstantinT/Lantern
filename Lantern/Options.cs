@@ -137,11 +137,19 @@ namespace Lantern
 
     }
 
-    [Verb("device", HelpText = "Join a device to Azure.")]
+    [Verb("mdm", HelpText = "Do things with Intune like joining a device")]
     class DeviceOptions : DefaultOptions
     {
+        [Option(HelpText = "Join a device, then you need to set at least a devicename (--devicename)", Default = false)]
+        public bool JoinDevice { get; set; }
 
-        [Option(HelpText = "Set device name", Required = true)]
+        [Option(HelpText = "Mark a device as compliant, then you need to set at least the deviceid (--objectid)", Default = false)]
+        public bool MarkCompliant { get; set; }
+
+        [Option(HelpText = "Specifiy the ObjectID of the device")]
+        public string ObjectID{ get; set; }
+
+        [Option(HelpText = "Specifiy device name")]
         public string DeviceName { get; set; }
 
         [Option(HelpText = "Set this, if you want only register the device", Default = false)]

@@ -44,19 +44,17 @@ Tipp: Disable HTTP2 support on your proxy. The library I use does not support HT
 
 Lantern 0.0.1-alpha
 
+  p2pcert       Ask for a P2P Certificate.
   nonce         Request a nonce from Azure.
-
-  cookie        Create a PRT Cookie for further usage or your browser
-
-  token         Play with Azure Tokens
-
-  device        Join a device to Azure
-
-  devicekeys    Play with Device Keys - Ask for PRT and SessionKey for a certificate
-
+  cookie        Create a PRT Cookie for further usage or your browser.
+  token         Play with Azure Tokens.
+  mdm           Do things with Intune like joining a device
+  devicekeys    Play with Device Keys - Ask for PRT and SessionKey for a
+                certificate.
+  utils         Some arbitrary usefull functions.
   help          Display more information on a specific command.
-
   version       Display version information.
+
 
 ```
 
@@ -80,9 +78,9 @@ Lantern.exe cookie --derivedkey <Key from Mimikatz> --context <Context from Mimi
 Lantern.exe cookie --sessionkey <SessionKey> --prt <PRT from Mimikatz>
 ```
 
-### Access Token
+### Token
 
-Create an access token you can use various combination:
+Create tokens in various combination and play with them:
 
 ```cmd
 Lantern.exe token --derivedkey <Key from Mimikatz> --context <Context from Mimikatz> --prt <PRT from Mimikatz>
@@ -100,12 +98,16 @@ Lantern.exe token --username <Username> --password <Password>
 Lantern.exe token --refreshtoken <RefreshToken>
 ```
 
-### DeviceJoin
+```cmd
+Lantern.exe token --refreshtoken <RefreshToken> --clientname Office
+```
+
+### Join a device or mark a device as compliant
 
 Join a device:
 
 ```cmd
-Lantern.exe device --accesstoken (or some combination from the token part) --devicename <Name> --outpfxfile <Some path>
+Lantern.exe mdm --joindevice --accesstoken (or some combination from the token part) --devicename <Name> --outpfxfile <Some path>
 ```
 
 ### Device Keys
@@ -114,6 +116,6 @@ Generate PRT and Session Key
 
 ```cmd
 
-Lanter.exe --devicekeys --pfxpath XXXX.pfx --refreshtoken (--prtcookie / ---username + --password ) 
+Lanter.exe devicekeys --pfxpath XXXX.pfx --refreshtoken (--prtcookie / ---username + --password ) 
 
 ```
