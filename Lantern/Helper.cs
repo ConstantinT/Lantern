@@ -220,7 +220,8 @@ namespace Lantern
             }
         }
 
-        private static string postTo(string uri, FormUrlEncodedContent formContent, string proxy)
+
+        private static string PostTo(string uri, FormUrlEncodedContent formContent, string proxy)
         {
             using (var message = new HttpRequestMessage(HttpMethod.Post, uri))
             using (var client = Helper.getDefaultClient(proxy, false))
@@ -234,48 +235,67 @@ namespace Lantern
             }
         }
 
-        public static string postToDeviceCodeEndpoint(FormUrlEncodedContent formContent, string proxy)
+        private static string GetFrom(string uri, string proxy)
         {
-            string uri = "/common/oauth2/devicecode";
-            return postTo(uri, formContent, proxy);
+            using (var message = new HttpRequestMessage(HttpMethod.Get, uri))
+            using (var client = Helper.getDefaultClient(proxy, false))
+            {
+                //message.Headers.Add("client-request-id", Guid.NewGuid().ToString());
+                //message.Headers.Add("return-client-request-id", "true");
+                var response = client.SendAsync(message).Result;
+                var result = response.Content.ReadAsStringAsync().Result;
+                return result;
+            }
         }
 
-        public static string postToTokenEndpoint(FormUrlEncodedContent formContent, string proxy, string tenant = null)
+        public static string GetOpenIDConfiguration(string domain, string proxy)
+        {
+            string uri = "/" + domain + "/.well-known/openid-configuration";
+            return GetFrom(uri,proxy);
+        }
+
+        public static string PostToDeviceCodeEndpoint(FormUrlEncodedContent formContent, string proxy)
+        {
+            string uri = "/common/oauth2/devicecode";
+            return PostTo(uri, formContent, proxy);
+        }
+
+        public static string PostToTokenEndpoint(FormUrlEncodedContent formContent, string proxy, string tenant = null)
         {
             string uri = "/common/oauth2/token";
             if (tenant != null)
             {
                 uri = "/" + tenant + "/oauth2/token";
             }
-            return postTo(uri, formContent, proxy);
+            return PostTo(uri, formContent, proxy);
         }
 
-        public static string getNonce2(string proxy)
+        public static string GetNonce2(string proxy)
         {
             var formContent = new FormUrlEncodedContent(new[]
                 {
                 new KeyValuePair<string, string>("grant_type", "srv_challenge")
                 });
-            string result = postToTokenEndpoint(formContent, proxy);
+            string result = PostToTokenEndpoint(formContent, proxy);
             JToken parsedNonce = JToken.Parse(result);
             return parsedNonce["Nonce"].ToString();
         }
 
-        public static string getTenantFromAccessToken(string accesstoken)
+        public static string GetTenantFromAccessToken(string accesstoken)
         {
-            return getInfoFromBase64JSON(accesstoken, "tid");
+            return GetInfoFromBase64JSON(accesstoken, "tid");
         }
 
-        public static string getAudienceFromAccessToken(string accesstoken)
+        public static string GetAudienceFromAccessToken(string accesstoken)
         {
-            return getInfoFromBase64JSON(accesstoken, "aud");
+            return GetInfoFromBase64JSON(accesstoken, "aud");
         }
         public static string getUPNFromAccessToken(string accesstoken)
         {
-            return getInfoFromBase64JSON(accesstoken, "upn");
+            return GetInfoFromBase64JSON(accesstoken, "upn");
         }
 
-        public static string getInfoFromBase64JSON(string jsonString, string info)
+        public static string GetInfoFromBase64JSON(string jsonString, string info)
         {
             var serializer = new JsonNetSerializer();
             var urlEncoder = new JwtBase64UrlEncoder();
@@ -293,12 +313,12 @@ namespace Lantern
             return b;
         }
 
-        public static byte[] combineByteArrays(byte[] first, byte[] second)
+        public static byte[] CombineByteArrays(byte[] first, byte[] second)
         {
             return first.Concat(second).ToArray();
         }
 
-        public static byte[] createDerivedKey(byte[] sessionKey, byte[] context)
+        public static byte[] CreateDerivedKey(byte[] sessionKey, byte[] context)
         {
             byte[] sessionKeyBytes = sessionKey;
             byte[] contextBytes = context;
@@ -308,10 +328,10 @@ namespace Lantern
             var second = new byte[] { 0x00 };
             var third = new byte[] { 0x00, 0x00, 0x01, 0x00 };
             
-            var value = combineByteArrays(first, label);
-            value = combineByteArrays(value, second);
-            value = combineByteArrays(value, contextBytes);
-            value = combineByteArrays(value, third);
+            var value = CombineByteArrays(first, label);
+            value = CombineByteArrays(value, second);
+            value = CombineByteArrays(value, contextBytes);
+            value = CombineByteArrays(value, third);
 
             var hmac = new System.Security.Cryptography.HMACSHA256(sessionKeyBytes);
 

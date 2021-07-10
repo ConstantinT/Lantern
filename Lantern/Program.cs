@@ -48,7 +48,7 @@ namespace Lantern
         static int Main(string[] args)
         {
             PrintBanner();
-            var parserResult = new Parser(c => c.HelpWriter = null).ParseArguments<P2POptions, NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions>(args);
+            var parserResult = new Parser(c => c.HelpWriter = null).ParseArguments<P2POptions, NonceOptions, CookieOptions, TokenOptions, DeviceOptions, DeviceKeyOptions, UtilsOptions>(args);
             return parserResult.MapResult(
                     (P2POptions options) => RunP2PAction(options),
                     (DeviceKeyOptions options) => RunDeviceKeys(options),
@@ -56,6 +56,7 @@ namespace Lantern
                     (NonceOptions options) => RunNonce(options),
                     (CookieOptions options) => RunCookie(options),
                     (TokenOptions options) => RunToken(options),
+                    (UtilsOptions options) => RunUtils(options),
                     errs => DisplayHelp(parserResult)
             );
         }
@@ -70,7 +71,7 @@ namespace Lantern
                 string CN = "CN=" + opts.UserName;
                 CertificateRequest req = new System.Security.Cryptography.X509Certificates.CertificateRequest(CN, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
                 var csr = Convert.ToBase64String(req.CreateSigningRequest());
-                string nonce = Helper.getNonce2(opts.Proxy);
+                string nonce = Helper.GetNonce2(opts.Proxy);
                 
                 var ctx = Helper.Hex2Binary(opts.Context);
                 Dictionary<string, object> headerRaw = new Dictionary<string, object>
@@ -109,7 +110,7 @@ namespace Lantern
                 CertificateRequest req = new CertificateRequest(CN, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
                 var csr = Convert.ToBase64String(req.CreateSigningRequest());
 
-                string nonce = Helper.getNonce2(opts.Proxy);
+                string nonce = Helper.GetNonce2(opts.Proxy);
 
                 Dictionary<string, string> headerRaw = new Dictionary<string, string>
                     {
@@ -215,7 +216,7 @@ namespace Lantern
                     return 1;
                 }
                 JToken parsedInitToken = JToken.Parse(initTokens);
-                tenantId = Helper.getTenantFromAccessToken(parsedInitToken["access_token"].ToString());
+                tenantId = Helper.GetTenantFromAccessToken(parsedInitToken["access_token"].ToString());
                 refreshtoken = parsedInitToken["refresh_token"].ToString();               
             } else
             {
@@ -230,7 +231,7 @@ namespace Lantern
                 var privateKey = cert.GetRSAPrivateKey();
                 var x5c = Convert.ToBase64String(cert.Export(X509ContentType.Cert));
 
-                string nonce = Helper.getNonce2(opts.Proxy);
+                string nonce = Helper.GetNonce2(opts.Proxy);
 
                 Dictionary<string, string> headerRaw = new Dictionary<string, string>
                     {
@@ -271,7 +272,7 @@ namespace Lantern
                     new KeyValuePair<string, string>("client_info", "2")
                     });
 
-                string result = Helper.postToTokenEndpoint(formContent, opts.Proxy, tenantId);
+                string result = Helper.PostToTokenEndpoint(formContent, opts.Proxy, tenantId);
                 JToken parsedResult = JToken.Parse(result);
                 
                 if (parsedResult["refresh_token"] != null && parsedResult["session_key_jwe"] != null)
@@ -438,7 +439,7 @@ namespace Lantern
             {
                 var context = Helper.GetByteArray(24);
                 var decodedKey = Helper.Base64Decode(opts.SessionKey);
-                var derivedKey = Helper.createDerivedKey(decodedKey, context);
+                var derivedKey = Helper.CreateDerivedKey(decodedKey, context);
 
                 var contextHex = Helper.Binary2Hex(context);
                 var derivedSessionKeyHex = Helper.Binary2Hex(derivedKey);
@@ -460,6 +461,25 @@ namespace Lantern
             Console.WriteLine("");
 
             return 0;
+        }
+
+        static int RunUtils(UtilsOptions opts)
+        {
+            if (opts.Domain != null)
+            {
+                String result = null;
+                result = Utils.GetTenantIdToDomain(opts.Domain, opts.Proxy);
+                if (result != null)
+                {
+                    Console.WriteLine("[+] The TenantID is: " + result);
+                }
+                else
+                {
+                    Console.WriteLine("[-] It seems the domain does not exist.");
+                }
+                return 0;
+            }
+            return 1;
         }
 
         static int RunToken(TokenOptions opts)

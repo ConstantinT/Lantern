@@ -11,7 +11,7 @@ namespace Lantern
         public string Proxy { get; set; }
     }
 
-    [Verb("devicekeys", HelpText = "Play with Device Keys - Ask for PRT and SessionKey for a certificate")]
+    [Verb("devicekeys", HelpText = "Play with Device Keys - Ask for PRT and SessionKey for a certificate.")]
     class DeviceKeyOptions : DefaultOptions
     {
         [Option(HelpText = "Specify path to device certificate (PFX).", Required = true)]
@@ -30,7 +30,7 @@ namespace Lantern
         public string RefreshToken { get; set; }
     }
 
-    [Verb("p2pcert", HelpText = "Ask for a P2P Certificate")]
+    [Verb("p2pcert", HelpText = "Ask for a P2P Certificate.")]
     class P2POptions : DefaultOptions
     {
         [Option(HelpText = "Specify path to device certificate (PFX).")]
@@ -68,7 +68,14 @@ namespace Lantern
     {
     }
 
-    [Verb("cookie", HelpText = "Create a PRT Cookie for further usage or your browser")]
+    [Verb("utils", HelpText = "Some arbitrary usefull functions.")]
+    class UtilsOptions : DefaultOptions
+    {
+        [Option(HelpText = "Resolve a domain to a TenantID")]
+        public string Domain { get; set; }
+    }
+
+    [Verb("cookie", HelpText = "Create a PRT Cookie for further usage or your browser.")]
     class CookieOptions : DefaultOptions
     {
         [Option(HelpText = "Set PRT")]
@@ -83,7 +90,7 @@ namespace Lantern
         [Option(HelpText = "Set Session Key")]
         public string SessionKey { get; set; }
     }
-    [Verb("token", HelpText = "Play with Azure Tokens")]
+    [Verb("token", HelpText = "Play with Azure Tokens.")]
     class TokenOptions : DefaultOptions
     {
         [Option(HelpText = "Set PRT")]
@@ -130,7 +137,7 @@ namespace Lantern
 
     }
 
-    [Verb("device", HelpText = "Join a device to Azure")]
+    [Verb("device", HelpText = "Join a device to Azure.")]
     class DeviceOptions : DefaultOptions
     {
 

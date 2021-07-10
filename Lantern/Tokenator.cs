@@ -20,7 +20,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("client_id", clientID)
                 });
 
-            return Helper.postToTokenEndpoint(formContent, proxy);
+            return Helper.PostToTokenEndpoint(formContent, proxy);
 
         }
 
@@ -31,7 +31,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("client_id", clientid),
                 new KeyValuePair<string, string>("resource", resourceid)
                 });
-            return Helper.postToDeviceCodeEndpoint(formContent, proxy);
+            return Helper.PostToDeviceCodeEndpoint(formContent, proxy);
         }
 
         private static string RequestP2PCertificate(string JWT, string tenant, string proxy)
@@ -42,7 +42,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("request", JWT)
                 });
 
-            return Helper.postToTokenEndpoint(formContent, proxy, tenant);
+            return Helper.PostToTokenEndpoint(formContent, proxy, tenant);
         }
 
         private static string AuthenticateWithClientIDandSecret(string clientID, string clientSecret, string tenant, string proxy, string ressourceId)
@@ -54,7 +54,7 @@ namespace Lantern
                 new KeyValuePair<string, string>(ressourceId, ressourceId),
                 new KeyValuePair<string, string>("client_secret", clientSecret)
                 });
-            return Helper.postToTokenEndpoint(formContent, proxy, tenant);
+            return Helper.PostToTokenEndpoint(formContent, proxy, tenant);
         }
 
         private static string AuthenticateWithUserNameAndPassword(string username, string password, string tenant, string proxy, string clientID, string ressourceId)
@@ -68,7 +68,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("username", username),
                 new KeyValuePair<string, string>("password", password)
                 });
-            return Helper.postToTokenEndpoint(formContent, proxy, tenant);
+            return Helper.PostToTokenEndpoint(formContent, proxy, tenant);
         }
 
         private static string AuthenticateWithRefreshTokenToTenant(string refreshToken, string tenant, string proxy, string clientID, string ressourceId)
@@ -81,7 +81,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("resource", ressourceId),
                 new KeyValuePair<string, string>("refresh_token", refreshToken)
                 });
-            return Helper.postToTokenEndpoint(formContent, proxy, tenant);
+            return Helper.PostToTokenEndpoint(formContent, proxy, tenant);
         }
 
         private static string AuthenticateWithRefreshToken(string refreshToken, string proxy, string clientID, string ressourceId)
@@ -94,7 +94,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("client_id", clientID),
                 new KeyValuePair<string, string>("refresh_token", refreshToken)
                 });
-            return Helper.postToTokenEndpoint(formContent, proxy);
+            return Helper.PostToTokenEndpoint(formContent, proxy);
         }
         private static string AuthenticateWithCode(string code, string proxy, string clientID, string ressourceId)
         {
@@ -107,7 +107,7 @@ namespace Lantern
                 new KeyValuePair<string, string>("code", code)
                 });
 
-            return Helper.postToTokenEndpoint(formContent, proxy);
+            return Helper.PostToTokenEndpoint(formContent, proxy);
         }
 
         public static string GetP2PCertificate(string JWT, string tenant, string proxy)
@@ -131,7 +131,7 @@ namespace Lantern
             string result = null;
             var context = Helper.GetByteArray(24);
             var decodedKey = Helper.Base64Decode(SessionKey);
-            var derivedKey = Helper.createDerivedKey(decodedKey, context);
+            var derivedKey = Helper.CreateDerivedKey(decodedKey, context);
 
             var contextHex = Helper.Binary2Hex(context);
             var derivedSessionKeyHex = Helper.Binary2Hex(derivedKey);
