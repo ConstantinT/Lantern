@@ -91,15 +91,11 @@ namespace Lantern
             var client = new HttpClient(handler);
             client.BaseAddress = new Uri(baseAdress);
             client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("UA-CPU", "AMD64");
+            //client.DefaultRequestHeaders.Add("UA-CPU", "AMD64");
             client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 10.0; Win64; x64; Trident/7.0; .NET4.0C; .NET4.0E)");
             return client;
 
         }
-
-        
-
- 
 
         // https://stackoverflow.com/questions/1459006/is-there-a-c-sharp-equivalent-to-pythons-unhexlify
         public static byte[] Hex2Binary(string hex)
@@ -224,6 +220,26 @@ namespace Lantern
             }
         }
 
+        private static string postTo(string uri, FormUrlEncodedContent formContent, string proxy)
+        {
+            using (var message = new HttpRequestMessage(HttpMethod.Post, uri))
+            using (var client = Helper.getDefaultClient(proxy, false))
+            {
+                //message.Headers.Add("client-request-id", Guid.NewGuid().ToString());
+                //message.Headers.Add("return-client-request-id", "true");
+                message.Content = formContent;
+                var response = client.SendAsync(message).Result;
+                var result = response.Content.ReadAsStringAsync().Result;
+                return result;
+            }
+        }
+
+        public static string postToDeviceCodeEndpoint(FormUrlEncodedContent formContent, string proxy)
+        {
+            string uri = "/common/oauth2/devicecode";
+            return postTo(uri, formContent, proxy);
+        }
+
         public static string postToTokenEndpoint(FormUrlEncodedContent formContent, string proxy, string tenant = null)
         {
             string uri = "/common/oauth2/token";
@@ -231,16 +247,7 @@ namespace Lantern
             {
                 uri = "/" + tenant + "/oauth2/token";
             }
-            using (var message = new HttpRequestMessage(HttpMethod.Post, uri))
-            using (var client = Helper.getDefaultClient(proxy, false))
-            {
-                message.Headers.Add("client-request-id", Guid.NewGuid().ToString());
-                message.Headers.Add("return-client-request-id", "true");
-                message.Content = formContent;
-                var response = client.SendAsync(message).Result;
-                var result = response.Content.ReadAsStringAsync().Result;
-                return result;
-            }
+            return postTo(uri, formContent, proxy);
         }
 
         public static string getNonce2(string proxy)

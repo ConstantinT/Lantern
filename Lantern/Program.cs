@@ -96,7 +96,7 @@ namespace Lantern
                 };
 
                 var JWT = Helper.signJWT(headerRaw, payload, opts.DerivedKey);
-                result = Tokenator.getP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+                result = Tokenator.GetP2PCertificate(JWT, opts.Tenant, opts.Proxy);
                 
             }
             else if (opts.PFXPath != null && opts.Tenant != null && opts.DeviceName != null)
@@ -147,7 +147,7 @@ namespace Lantern
 
                 var JWT = header + "." + payload + "." + signatureb64;
 
-                result = Tokenator.getP2PCertificate(JWT, opts.Tenant, opts.Proxy);
+                result = Tokenator.GetP2PCertificate(JWT, opts.Tenant, opts.Proxy);
             }
             else 
             {

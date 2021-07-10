@@ -92,6 +92,9 @@ namespace Lantern
         [Option(HelpText = "Set Session Key")]
         public string SessionKey { get; set; }
 
+        [Option(HelpText = "Use DeviceCode authentication", Default = false)]
+        public bool Devicecode{ get; set; }
+
         [Option(HelpText = "Set DerivedKey")]
         public string DerivedKey { get; set; }
 
