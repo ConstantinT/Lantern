@@ -1,5 +1,7 @@
 # Lantern
 
+This repo is not maintained anymore. Moved to [SharpAzToken](https://github.com/HackmichNet/SharpAzToken).
+
 Lantern is a small tool I created to learn about Azure authentication, tokens and C#. Maybe It helps you to learn, too. The code for authentication, is mainly adapted from [auth.py](https://github.com/dirkjanm/ROADtools/blob/master/roadlib/roadtools/roadlib/auth.py) of [roadtools](https://github.com/dirkjanm/ROADtools) from [Dirk-Jan](https://twitter.com/_dirkjan) and ported to c#. All credits for the authentication part goes to him.
 
 How Azure PRT works is mainly described in these two articles:
